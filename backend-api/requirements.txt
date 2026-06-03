@@ -1,0 +1,16 @@
+# Web framework
+fastapi==0.115.5
+uvicorn[standard]==0.32.1
+
+# Variables de entorno
+python-dotenv==1.0.1
+
+# Google Gemini SDK
+google-genai==1.14.0
+
+# Utilidades HTTP (para consumir APIs externas si se necesita)
+httpx==0.28.1
+
+# Futuro OCR (se activa cuando se defina la librería)
+# pytesseract==0.3.13
+# Pillow==11.0.0
