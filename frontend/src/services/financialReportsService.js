@@ -1,6 +1,7 @@
 // frontend/src/services/financialReportsService.js
 
 import { calcularMetricasFinancieras } from './financialMetricsService';
+import { calcularIndicadoresFinancieros } from './financialIndicatorsService';
 
 import {
   collection,
@@ -298,6 +299,12 @@ export const generarReporteFinanciero = ({
     fechaFin,
   });
 
+  const indicadoresFinancieros = calcularIndicadoresFinancieros({
+    movimientos,
+    fechaInicio,
+    fechaFin,
+  });
+
   return {
     periodo: {
       fechaInicio,
@@ -310,6 +317,7 @@ export const generarReporteFinanciero = ({
       flujoNeto,
     },
     metricas,
+    indicadoresFinancieros,
     porTipo: calcularPorTipo(movimientos),
     porCategoria: calcularPorCategoria(movimientos),
     porDia: calcularPorDia(movimientos),
