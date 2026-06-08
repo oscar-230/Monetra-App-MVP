@@ -10,9 +10,19 @@ import {
   Timestamp,
 } from 'firebase/firestore';
 
-import { db } from '../firebase/config';
+import { auth, db } from '../firebase/config';
 
 export const TIPOS_MOVIMIENTO = ['ingreso', 'gasto', 'ahorro', 'deuda'];
+
+const obtenerUsuarioAutenticado = () => {
+  const usuario = auth.currentUser;
+
+  if (!usuario) {
+    throw new Error('No hay un usuario autenticado para asociar el movimiento.');
+  }
+
+  return usuario;
+};
 
 const convertirFecha = (fecha) => {
   if (!fecha) return null;
@@ -49,16 +59,13 @@ export const validarMovimiento = ({ tipo, monto, categoria, fecha }) => {
 };
 
 export const guardarMovimiento = async ({
-  uid,
   tipo,
   monto,
   categoria,
   fecha,
   descripcion = '',
 }) => {
-  if (!uid) {
-    throw new Error('No hay usuario autenticado.');
-  }
+  const usuario = obtenerUsuarioAutenticado();
 
   validarMovimiento({
     tipo,
@@ -68,7 +75,7 @@ export const guardarMovimiento = async ({
   });
 
   const movimiento = {
-    uid,
+    uid: usuario.uid,
     tipo,
     monto: Number(monto),
     categoria: categoria.trim(),
@@ -80,7 +87,12 @@ export const guardarMovimiento = async ({
     actualizadoEn: serverTimestamp(),
   };
 
-  const referencia = collection(db, 'users', uid, 'movements');
+  const referencia = collection(
+    db,
+    'users',
+    usuario.uid,
+    'movements'
+  );
 
   const documento = await addDoc(referencia, movimiento);
 
@@ -90,12 +102,15 @@ export const guardarMovimiento = async ({
   };
 };
 
-export const obtenerMovimientosUsuario = async (uid) => {
-  if (!uid) {
-    throw new Error('No hay usuario autenticado.');
-  }
+export const obtenerMovimientosUsuario = async () => {
+  const usuario = obtenerUsuarioAutenticado();
 
-  const referencia = collection(db, 'users', uid, 'movements');
+  const referencia = collection(
+    db,
+    'users',
+    usuario.uid,
+    'movements'
+  );
 
   const consulta = query(
     referencia,
