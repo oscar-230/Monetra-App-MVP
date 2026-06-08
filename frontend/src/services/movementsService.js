@@ -3,6 +3,7 @@
 import {
   addDoc,
   collection,
+  deleteDoc,
   doc,
   getDoc,
   getDocs,
@@ -179,5 +180,42 @@ export const actualizarMovimiento = async ({
   return {
     id: documentoActualizado.id,
     ...documentoActualizado.data(),
+  };
+};
+
+export const eliminarMovimiento = async ({
+  movimientoId,
+  confirmarEliminacion = false,
+}) => {
+  const usuario = obtenerUsuarioAutenticado();
+
+  if (!movimientoId) {
+    throw new Error('No se recibió el ID del movimiento a eliminar.');
+  }
+
+  if (!confirmarEliminacion) {
+    throw new Error('Debes confirmar la eliminación del movimiento.');
+  }
+
+  const referencia = doc(
+    db,
+    'users',
+    usuario.uid,
+    'movements',
+    movimientoId
+  );
+
+  const documentoActual = await getDoc(referencia);
+
+  if (!documentoActual.exists()) {
+    throw new Error('El movimiento no existe o no pertenece al usuario autenticado.');
+  }
+
+  await deleteDoc(referencia);
+
+  return {
+    id: movimientoId,
+    eliminado: true,
+    mensaje: 'Movimiento eliminado correctamente.',
   };
 };
