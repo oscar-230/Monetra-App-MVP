@@ -9,50 +9,11 @@ import {
   procesarInformacionFinancieraUsuario,
 } from './financialDataProcessorService';
 
+import {
+  construirPromptAnalisisFinancieroIA,
+} from './financialAnalysisPromptsService';
+
 const limpiarTexto = (valor) => String(valor || '').trim();
-
-const construirPromptAnalisisFinancieroIA = (contextoProcesado) => {
-  return `
-Eres el asistente financiero de Monetra.
-
-Tu tarea es generar un análisis financiero claro, breve y útil para un usuario joven que quiere entender sus hábitos de consumo.
-
-Usa únicamente la información financiera procesada.
-No inventes datos.
-No des asesoría de inversión, crédito o productos financieros específicos.
-No menciones que eres una IA.
-Escribe en español claro y fácil de entender.
-
-Responde únicamente en JSON válido, sin markdown, sin bloque de código y sin texto adicional.
-
-La estructura exacta debe ser:
-
-{
-  "resumenEjecutivo": "Texto breve de 2 a 4 frases.",
-  "patronesDetectados": [
-    {
-      "titulo": "Nombre del patrón",
-      "descripcion": "Explicación clara del patrón detectado",
-      "categoria": "ingresos | gastos | ahorro | deudas | flujo",
-      "nivel": "positivo | informativo | advertencia | riesgo"
-    }
-  ],
-  "conclusiones": [
-    "Conclusión útil 1",
-    "Conclusión útil 2"
-  ],
-  "oportunidadesMejora": [
-    "Oportunidad de mejora 1",
-    "Oportunidad de mejora 2"
-  ],
-  "mensajeFinal": "Mensaje corto y motivador para el usuario."
-}
-
-Información financiera procesada:
-
-${JSON.stringify(contextoProcesado.contextoIA, null, 2)}
-`;
-};
 
 const extraerJsonDesdeRespuesta = (texto) => {
   try {
@@ -85,6 +46,7 @@ const normalizarPatrones = (patrones) => {
     descripcion: limpiarTexto(patron.descripcion),
     categoria: limpiarTexto(patron.categoria || 'general'),
     nivel: limpiarTexto(patron.nivel || 'informativo'),
+    evidencia: limpiarTexto(patron.evidencia || ''),
   }));
 };
 
@@ -104,6 +66,7 @@ const normalizarAnalisisIA = ({
     oportunidadesMejora: normalizarListaTexto(
       respuestaIA.oportunidadesMejora
     ),
+    advertencias: normalizarListaTexto(respuestaIA.advertencias),
     mensajeFinal: limpiarTexto(respuestaIA.mensajeFinal),
     periodo: contextoIA.periodo || null,
     perfilFinanciero: contextoIA.perfilFinanciero || null,
