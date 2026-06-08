@@ -3,11 +3,14 @@
 import {
   addDoc,
   collection,
+  doc,
+  getDoc,
   getDocs,
   orderBy,
   query,
   serverTimestamp,
   Timestamp,
+  updateDoc,
 } from 'firebase/firestore';
 
 import { auth, db } from '../firebase/config';
@@ -18,7 +21,7 @@ const obtenerUsuarioAutenticado = () => {
   const usuario = auth.currentUser;
 
   if (!usuario) {
-    throw new Error('No hay un usuario autenticado para asociar el movimiento.');
+    throw new Error('No hay un usuario autenticado.');
   }
 
   return usuario;
@@ -123,4 +126,58 @@ export const obtenerMovimientosUsuario = async () => {
     id: documento.id,
     ...documento.data(),
   }));
+};
+
+export const actualizarMovimiento = async ({
+  movimientoId,
+  tipo,
+  monto,
+  categoria,
+  fecha,
+  descripcion = '',
+}) => {
+  const usuario = obtenerUsuarioAutenticado();
+
+  if (!movimientoId) {
+    throw new Error('No se recibió el ID del movimiento a actualizar.');
+  }
+
+  validarMovimiento({
+    tipo,
+    monto,
+    categoria,
+    fecha,
+  });
+
+  const referencia = doc(
+    db,
+    'users',
+    usuario.uid,
+    'movements',
+    movimientoId
+  );
+
+  const documentoActual = await getDoc(referencia);
+
+  if (!documentoActual.exists()) {
+    throw new Error('El movimiento no existe o no pertenece al usuario autenticado.');
+  }
+
+  const datosActualizados = {
+    tipo,
+    monto: Number(monto),
+    categoria: categoria.trim(),
+    fecha: Timestamp.fromDate(convertirFecha(fecha)),
+    descripcion: descripcion.trim(),
+    actualizadoEn: serverTimestamp(),
+  };
+
+  await updateDoc(referencia, datosActualizados);
+
+  const documentoActualizado = await getDoc(referencia);
+
+  return {
+    id: documentoActualizado.id,
+    ...documentoActualizado.data(),
+  };
 };
