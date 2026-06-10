@@ -1,7 +1,7 @@
 import json
 import os
 import re
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 import httpx
 from dotenv import load_dotenv
@@ -58,36 +58,12 @@ def extract_json_from_text(text: str) -> Dict[str, Any]:
         return json.loads(match.group(0))
 
 
-async def generate_content_with_gemini(
-    prompt: str,
-    temperature: float = 0.3,
-    max_output_tokens: int = 1400,
-    response_mime_type: str = "application/json",
+async def call_gemini_generate_content(
+    payload: Dict[str, Any],
     model: str = DEFAULT_MODEL,
 ) -> Dict[str, Any]:
-    if not prompt or not prompt.strip():
-        raise GeminiServiceError("No se recibió un prompt válido.")
-
     api_key = get_gemini_api_key()
     url = GEMINI_API_URL.format(model=model)
-
-    payload = {
-        "contents": [
-            {
-                "role": "user",
-                "parts": [
-                    {
-                        "text": prompt,
-                    }
-                ],
-            }
-        ],
-        "generationConfig": {
-            "temperature": temperature,
-            "maxOutputTokens": max_output_tokens,
-            "responseMimeType": response_mime_type,
-        },
-    }
 
     async with httpx.AsyncClient(timeout=DEFAULT_TIMEOUT_SECONDS) as client:
         response = await client.post(
@@ -114,7 +90,84 @@ async def generate_content_with_gemini(
         "modelo": model,
         "texto": text,
         "json": extract_json_from_text(text)
-        if response_mime_type == "application/json"
+        if payload.get("generationConfig", {}).get("responseMimeType") == "application/json"
         else None,
         "respuestaOriginal": response_data,
     }
+
+
+async def generate_content_with_gemini(
+    prompt: str,
+    temperature: float = 0.3,
+    max_output_tokens: int = 1400,
+    response_mime_type: str = "application/json",
+    model: str = DEFAULT_MODEL,
+) -> Dict[str, Any]:
+    if not prompt or not prompt.strip():
+        raise GeminiServiceError("No se recibió un prompt válido.")
+
+    payload = {
+        "contents": [
+            {
+                "role": "user",
+                "parts": [
+                    {
+                        "text": prompt,
+                    }
+                ],
+            }
+        ],
+        "generationConfig": {
+            "temperature": temperature,
+            "maxOutputTokens": max_output_tokens,
+            "responseMimeType": response_mime_type,
+        },
+    }
+
+    return await call_gemini_generate_content(payload=payload, model=model)
+
+
+async def generate_content_with_gemini_image(
+    *,
+    prompt: str,
+    image_base64: str,
+    mime_type: str,
+    temperature: float = 0.2,
+    max_output_tokens: int = 1400,
+    response_mime_type: str = "application/json",
+    model: str = DEFAULT_MODEL,
+) -> Dict[str, Any]:
+    if not prompt or not prompt.strip():
+        raise GeminiServiceError("No se recibió un prompt válido para procesar la imagen.")
+
+    if not image_base64:
+        raise GeminiServiceError("No se recibió imagen en base64.")
+
+    if not mime_type:
+        raise GeminiServiceError("No se recibió el tipo MIME de la imagen.")
+
+    payload = {
+        "contents": [
+            {
+                "role": "user",
+                "parts": [
+                    {
+                        "text": prompt,
+                    },
+                    {
+                        "inline_data": {
+                            "mime_type": mime_type,
+                            "data": image_base64,
+                        }
+                    },
+                ],
+            }
+        ],
+        "generationConfig": {
+            "temperature": temperature,
+            "maxOutputTokens": max_output_tokens,
+            "responseMimeType": response_mime_type,
+        },
+    }
+
+    return await call_gemini_generate_content(payload=payload, model=model)

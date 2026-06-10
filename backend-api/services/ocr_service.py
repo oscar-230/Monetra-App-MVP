@@ -1,11 +1,13 @@
-import io
-import re
+import base64
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
-import pytesseract
 from fastapi import UploadFile
-from PIL import Image, ImageOps
+
+from services.gemini_service import (
+    GeminiServiceError,
+    generate_content_with_gemini_image,
+)
 
 ALLOWED_IMAGE_TYPES = {
     "image/jpeg",
@@ -25,299 +27,6 @@ def now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-def clean_text(text: str) -> str:
-    return (
-        str(text or "")
-        .replace("\r", "\n")
-        .replace("\t", " ")
-        .strip()
-    )
-
-
-def normalize_text(text: str) -> str:
-    return (
-        clean_text(text)
-        .lower()
-        .replace("á", "a")
-        .replace("é", "e")
-        .replace("í", "i")
-        .replace("ó", "o")
-        .replace("ú", "u")
-        .replace("ñ", "n")
-    )
-
-
-def convert_amount_to_number(value: str) -> Optional[float]:
-    if not value:
-        return None
-
-    cleaned = (
-        str(value)
-        .replace("COP", "")
-        .replace("$", "")
-        .replace(" ", "")
-    )
-
-    cleaned = re.sub(r"[^\d.,]", "", cleaned)
-
-    if not cleaned:
-        return None
-
-    has_dot = "." in cleaned
-    has_comma = "," in cleaned
-
-    if has_dot and has_comma:
-        last_dot = cleaned.rfind(".")
-        last_comma = cleaned.rfind(",")
-
-        if last_dot > last_comma:
-            cleaned = cleaned.replace(",", "")
-        else:
-            cleaned = cleaned.replace(".", "").replace(",", ".")
-    elif has_comma:
-        parts = cleaned.split(",")
-
-        if len(parts) == 2 and len(parts[1]) <= 2:
-            cleaned = cleaned.replace(",", ".")
-        else:
-            cleaned = cleaned.replace(",", "")
-    elif has_dot:
-        parts = cleaned.split(".")
-
-        if len(parts) > 2 or len(parts[-1]) == 3:
-            cleaned = cleaned.replace(".", "")
-
-    try:
-        amount = float(cleaned)
-
-        return amount if amount > 0 else None
-    except ValueError:
-        return None
-
-
-def extract_amount(text: str) -> Optional[float]:
-    lines = [line.strip() for line in text.splitlines() if line.strip()]
-
-    keywords = [
-        "total a pagar",
-        "valor total",
-        "total compra",
-        "total",
-        "importe total",
-        "monto total",
-        "valor pagado",
-    ]
-
-    for line in lines:
-        normalized = normalize_text(line)
-
-        if any(keyword in normalized for keyword in keywords):
-            possible_amounts = re.findall(r"(?:COP|\$)?\s*\d[\d.,]*", line, re.I)
-
-            amounts = [
-                amount
-                for amount in (convert_amount_to_number(item) for item in possible_amounts)
-                if amount is not None and amount >= 100
-            ]
-
-            if amounts:
-                return max(amounts)
-
-    all_amounts = re.findall(r"(?:COP|\$)?\s*\d[\d.,]{2,}", text, re.I)
-
-    amounts = [
-        amount
-        for amount in (convert_amount_to_number(item) for item in all_amounts)
-        if amount is not None and amount >= 100
-    ]
-
-    return max(amounts) if amounts else None
-
-
-def format_date_iso(year: int, month: int, day: int) -> Optional[str]:
-    try:
-        date = datetime(year, month, day)
-
-        return date.strftime("%Y-%m-%d")
-    except ValueError:
-        return None
-
-
-def extract_date(text: str) -> Optional[str]:
-    patterns = [
-        r"(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})",
-        r"(\d{1,2})[-/.](\d{1,2})[-/.](\d{2,4})",
-    ]
-
-    for pattern in patterns:
-        match = re.search(pattern, text)
-
-        if not match:
-            continue
-
-        groups = match.groups()
-
-        if len(groups[0]) == 4:
-            return format_date_iso(
-                int(groups[0]),
-                int(groups[1]),
-                int(groups[2]),
-            )
-
-        year = int(groups[2])
-
-        if year < 100:
-            year += 2000
-
-        return format_date_iso(
-            year,
-            int(groups[1]),
-            int(groups[0]),
-        )
-
-    return None
-
-
-def extract_store(text: str) -> Optional[str]:
-    ignored_words = [
-        "factura",
-        "nit",
-        "fecha",
-        "total",
-        "iva",
-        "subtotal",
-        "resolucion",
-        "autorizacion",
-    ]
-
-    lines = [line.strip() for line in text.splitlines() if line.strip()]
-
-    for line in lines:
-        normalized = normalize_text(line)
-
-        if len(line) < 3:
-            continue
-
-        if any(word in normalized for word in ignored_words):
-            continue
-
-        if re.fullmatch(r"\d+", line):
-            continue
-
-        return line[:80]
-
-    return None
-
-
-def suggest_category(text: str) -> str:
-    normalized = normalize_text(text)
-
-    categories = [
-        (
-            "Alimentación",
-            [
-                "restaurante",
-                "comida",
-                "almuerzo",
-                "cafe",
-                "panaderia",
-                "mercado",
-                "supermercado",
-            ],
-        ),
-        (
-            "Transporte",
-            [
-                "taxi",
-                "uber",
-                "didi",
-                "gasolina",
-                "combustible",
-                "parqueadero",
-                "peaje",
-            ],
-        ),
-        (
-            "Salud",
-            [
-                "farmacia",
-                "drogueria",
-                "medicamento",
-                "clinica",
-                "salud",
-            ],
-        ),
-        (
-            "Educación",
-            [
-                "universidad",
-                "colegio",
-                "libro",
-                "curso",
-                "papeleria",
-            ],
-        ),
-        (
-            "Ocio",
-            [
-                "cine",
-                "bar",
-                "juego",
-                "entretenimiento",
-                "discoteca",
-            ],
-        ),
-    ]
-
-    for category, keywords in categories:
-        if any(keyword in normalized for keyword in keywords):
-            return category
-
-    return "Sin categoría"
-
-
-def build_description(text: str, store: Optional[str]) -> str:
-    if store:
-        return f"Compra en {store}"
-
-    return "Gasto registrado por OCR"
-
-
-def get_ocr_confidence(image: Image.Image) -> float:
-    try:
-        data = pytesseract.image_to_data(
-            image,
-            lang="spa+eng",
-            output_type=pytesseract.Output.DICT,
-        )
-
-        confidences: List[float] = []
-
-        for value in data.get("conf", []):
-            try:
-                confidence = float(value)
-
-                if confidence >= 0:
-                    confidences.append(confidence)
-            except ValueError:
-                continue
-
-        if not confidences:
-            return 0.0
-
-        return round(sum(confidences) / len(confidences), 2)
-    except Exception:
-        return 0.0
-
-
-def preprocess_image(image: Image.Image) -> Image.Image:
-    image = ImageOps.exif_transpose(image)
-    image = image.convert("L")
-    image = ImageOps.autocontrast(image)
-
-    return image
-
-
 async def validate_image_file(file: UploadFile) -> bytes:
     if not file:
         raise OCRServiceError("No se recibió ninguna imagen para procesar.")
@@ -327,41 +36,139 @@ async def validate_image_file(file: UploadFile) -> bytes:
 
     content = await file.read()
 
+    if not content:
+        raise OCRServiceError("El archivo recibido está vacío.")
+
     size_mb = len(content) / 1024 / 1024
 
     if size_mb > MAX_IMAGE_SIZE_MB:
         raise OCRServiceError(f"La imagen no debe superar {MAX_IMAGE_SIZE_MB} MB.")
 
-    if not content:
-        raise OCRServiceError("El archivo recibido está vacío.")
-
     return content
 
 
-def extract_receipt_data(text: str) -> Dict[str, Any]:
-    cleaned_text = clean_text(text)
+def build_receipt_ocr_prompt() -> str:
+    return """
+Eres el módulo OCR inteligente de Monetra.
 
-    if not cleaned_text or len(cleaned_text) < 8:
-        raise OCRServiceError(
-            "No fue posible reconocer texto útil en el comprobante."
-        )
+Tu tarea es analizar la imagen de una factura, recibo o comprobante y extraer información financiera útil para registrar un gasto automáticamente.
 
-    amount = extract_amount(cleaned_text)
-    date = extract_date(cleaned_text)
-    store = extract_store(cleaned_text)
-    description = build_description(cleaned_text, store)
-    category = suggest_category(cleaned_text)
+Usa únicamente la información visible en la imagen.
+No inventes datos.
+Si no puedes identificar un campo, usa null.
+No incluyas markdown.
+Responde únicamente con JSON válido.
 
-    warnings = []
+La estructura exacta debe ser:
+
+{
+  "textoExtraido": "Texto completo reconocido en la imagen, lo más fiel posible.",
+  "datosExtraidos": {
+    "tipo": "gasto",
+    "monto": 0,
+    "fecha": "YYYY-MM-DD o null",
+    "comercio": "Nombre del comercio o null",
+    "descripcion": "Descripción breve del gasto",
+    "categoria": "Alimentación | Transporte | Salud | Educación | Ocio | Vivienda | Servicios | Sin categoría",
+    "moneda": "COP",
+    "origen": "ocr",
+    "requiereRevision": true,
+    "camposDetectados": {
+      "monto": true,
+      "fecha": true,
+      "comercio": true,
+      "descripcion": true
+    },
+    "advertencias": [
+      "Lista de advertencias si algún dato no pudo detectarse o si la imagen es poco clara"
+    ]
+  }
+}
+
+Reglas:
+- El monto debe ser numérico, sin símbolos de moneda ni separadores.
+- Si hay varios montos, prioriza total, total a pagar, valor total o importe total.
+- La fecha debe ir en formato YYYY-MM-DD cuando sea posible.
+- La descripción debe ser corta, por ejemplo: "Compra en Supermercado X".
+- La categoría debe inferirse solo si hay señales claras en el texto.
+- Siempre marca requiereRevision como true.
+"""
+
+
+def normalize_bool(value: Any) -> bool:
+    return bool(value)
+
+
+def normalize_amount(value: Any) -> Optional[float]:
+    if value is None:
+        return None
+
+    try:
+        amount = float(value)
+        return amount if amount > 0 else None
+    except (TypeError, ValueError):
+        return None
+
+
+def normalize_text(value: Any) -> Optional[str]:
+    if value is None:
+        return None
+
+    text = str(value).strip()
+
+    return text if text else None
+
+
+def normalize_detected_fields(fields: Dict[str, Any]) -> Dict[str, bool]:
+    return {
+        "monto": normalize_bool(fields.get("monto")),
+        "fecha": normalize_bool(fields.get("fecha")),
+        "comercio": normalize_bool(fields.get("comercio")),
+        "descripcion": normalize_bool(fields.get("descripcion")),
+    }
+
+
+def normalize_ocr_response(response_json: Dict[str, Any]) -> Dict[str, Any]:
+    raw_text = normalize_text(response_json.get("textoExtraido")) or ""
+
+    data = response_json.get("datosExtraidos") or {}
+
+    amount = normalize_amount(data.get("monto"))
+    date = normalize_text(data.get("fecha"))
+    store = normalize_text(data.get("comercio"))
+    description = (
+        normalize_text(data.get("descripcion"))
+        or f"Compra en {store}"
+        if store
+        else "Gasto registrado por OCR"
+    )
+
+    category = normalize_text(data.get("categoria")) or "Sin categoría"
+
+    warnings = data.get("advertencias") or []
+
+    if not isinstance(warnings, list):
+        warnings = [str(warnings)]
+
+    detected_fields = normalize_detected_fields(
+        data.get("camposDetectados") or {}
+    )
 
     if amount is None:
+        detected_fields["monto"] = False
         warnings.append("No se pudo identificar el monto automáticamente.")
 
-    if date is None:
+    if not date:
+        detected_fields["fecha"] = False
         warnings.append("No se pudo identificar la fecha automáticamente.")
 
-    if store is None:
+    if not store:
+        detected_fields["comercio"] = False
         warnings.append("No se pudo identificar claramente el comercio.")
+
+    if not description:
+        detected_fields["descripcion"] = False
+        description = "Gasto registrado por OCR"
 
     return {
         "tipo": "gasto",
@@ -370,57 +177,58 @@ def extract_receipt_data(text: str) -> Dict[str, Any]:
         "comercio": store,
         "descripcion": description,
         "categoria": category,
+        "moneda": "COP",
         "origen": "ocr",
         "requiereRevision": True,
-        "camposDetectados": {
-            "monto": amount is not None,
-            "fecha": date is not None,
-            "comercio": store is not None,
-            "descripcion": bool(description),
-        },
-        "advertencias": warnings,
-        "textoOriginal": cleaned_text,
+        "camposDetectados": detected_fields,
+        "advertencias": list(dict.fromkeys(warnings)),
+        "textoOriginal": raw_text,
     }
 
 
 async def process_receipt_image(file: UploadFile) -> Dict[str, Any]:
     content = await validate_image_file(file)
 
-    try:
-        image = Image.open(io.BytesIO(content))
-        image = preprocess_image(image)
-    except Exception as error:
-        raise OCRServiceError(
-            "No fue posible abrir la imagen. Verifica que el archivo sea válido."
-        ) from error
+    image_base64 = base64.b64encode(content).decode("utf-8")
+
+    prompt = build_receipt_ocr_prompt()
 
     try:
-        text = pytesseract.image_to_string(image, lang="spa+eng")
-        confidence = get_ocr_confidence(image)
-        data = extract_receipt_data(text)
+        gemini_response = await generate_content_with_gemini_image(
+            prompt=prompt,
+            image_base64=image_base64,
+            mime_type=file.content_type,
+            temperature=0.2,
+            max_output_tokens=1600,
+            response_mime_type="application/json",
+        )
+
+        response_json = gemini_response.get("json") or {}
+
+        data = normalize_ocr_response(response_json)
 
         return {
             "exito": True,
-            "mensaje": "Documento procesado correctamente.",
+            "mensaje": "Documento procesado correctamente con OCR inteligente.",
+            "motor": "gemini-vision",
+            "modelo": gemini_response.get("modelo"),
             "archivo": {
                 "nombre": file.filename,
                 "tipo": file.content_type,
                 "tamanoBytes": len(content),
             },
-            "confianza": confidence,
+            "confianza": None,
             "textoExtraido": data["textoOriginal"],
             "datosExtraidos": data,
             "requiereRevision": True,
             "advertencias": data["advertencias"],
             "procesadoEn": now_iso(),
         }
-    except OCRServiceError:
-        raise
-    except pytesseract.TesseractNotFoundError as error:
+    except GeminiServiceError as error:
         raise OCRServiceError(
-            "Tesseract OCR no está instalado o no está configurado en el sistema."
+            f"No fue posible procesar el documento con Gemini OCR: {str(error)}"
         ) from error
     except Exception as error:
         raise OCRServiceError(
-            "No fue posible procesar el documento con OCR."
+            "No fue posible procesar el documento con OCR inteligente."
         ) from error
