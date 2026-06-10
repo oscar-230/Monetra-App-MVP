@@ -44,23 +44,50 @@ def extract_text_from_gemini_response(response_data: Dict[str, Any]) -> str:
     return text
 
 
-def extract_json_from_text(text: str) -> Dict[str, Any]:
+def clean_json_text(text: str) -> str:
+    cleaned = str(text or "").strip()
+
+    cleaned = re.sub(r"^```json", "", cleaned, flags=re.IGNORECASE).strip()
+    cleaned = re.sub(r"^```", "", cleaned).strip()
+    cleaned = re.sub(r"```$", "", cleaned).strip()
+
+    return cleaned
+
+
+def try_extract_json_from_text(text: str) -> Optional[Dict[str, Any]]:
+    cleaned = clean_json_text(text)
+
     try:
-        return json.loads(text)
+        return json.loads(cleaned)
     except json.JSONDecodeError:
-        match = re.search(r"\{[\s\S]*\}", text)
+        pass
 
-        if not match:
-            raise GeminiServiceError(
-                "La respuesta de Gemini no contiene JSON válido."
-            )
+    match = re.search(r"\{[\s\S]*\}", cleaned)
 
+    if not match:
+        return None
+
+    try:
         return json.loads(match.group(0))
+    except json.JSONDecodeError:
+        return None
+
+
+def extract_json_from_text(text: str) -> Dict[str, Any]:
+    parsed = try_extract_json_from_text(text)
+
+    if parsed is None:
+        raise GeminiServiceError(
+            "La respuesta de Gemini no contiene JSON válido."
+        )
+
+    return parsed
 
 
 async def call_gemini_generate_content(
     payload: Dict[str, Any],
     model: str = DEFAULT_MODEL,
+    strict_json: bool = True,
 ) -> Dict[str, Any]:
     api_key = get_gemini_api_key()
     url = GEMINI_API_URL.format(model=model)
@@ -85,13 +112,29 @@ async def call_gemini_generate_content(
 
     text = extract_text_from_gemini_response(response_data)
 
+    wants_json = (
+        payload.get("generationConfig", {}).get("responseMimeType")
+        == "application/json"
+    )
+
+    parsed_json = None
+    json_parse_error = None
+
+    if wants_json:
+        parsed_json = try_extract_json_from_text(text)
+
+        if parsed_json is None:
+            json_parse_error = "La respuesta de Gemini no contiene JSON válido."
+
+            if strict_json:
+                raise GeminiServiceError(json_parse_error)
+
     return {
         "exito": True,
         "modelo": model,
         "texto": text,
-        "json": extract_json_from_text(text)
-        if payload.get("generationConfig", {}).get("responseMimeType") == "application/json"
-        else None,
+        "json": parsed_json,
+        "jsonParseError": json_parse_error,
         "respuestaOriginal": response_data,
     }
 
@@ -124,7 +167,11 @@ async def generate_content_with_gemini(
         },
     }
 
-    return await call_gemini_generate_content(payload=payload, model=model)
+    return await call_gemini_generate_content(
+        payload=payload,
+        model=model,
+        strict_json=True,
+    )
 
 
 async def generate_content_with_gemini_image(
@@ -170,4 +217,8 @@ async def generate_content_with_gemini_image(
         },
     }
 
-    return await call_gemini_generate_content(payload=payload, model=model)
+    return await call_gemini_generate_content(
+        payload=payload,
+        model=model,
+        strict_json=False,
+    )
