@@ -5,13 +5,16 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from routers.ai_router import router as ai_router
+from routers.movements_router import router as movements_router
 from routers.ocr_router import router as ocr_router
+from routers.predictions_router import router as predictions_router
+from routers.reports_router import router as reports_router
 
 load_dotenv()
 
 app = FastAPI(
     title="Monetra Backend API",
-    description="API backend para IA, OCR, análisis, recomendaciones y predicciones financieras de Monetra.",
+    description="API backend para movimientos, reportes, IA, OCR, recomendaciones y predicciones financieras.",
     version="1.0.0",
 )
 
@@ -29,8 +32,20 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(movements_router, prefix="/api/movements", tags=["Movimientos"])
+app.include_router(reports_router, prefix="/api/reports", tags=["Reportes"])
+app.include_router(predictions_router, prefix="/api/predictions", tags=["Predicciones"])
 app.include_router(ai_router, prefix="/api/ai", tags=["IA Financiera"])
 app.include_router(ocr_router, prefix="/api/ocr", tags=["OCR"])
+
+
+@app.get("/")
+def root():
+    return {
+        "message": "Monetra Backend API funcionando correctamente",
+        "docs": "/docs",
+        "health": "/api/health",
+    }
 
 
 @app.get("/api/health")
