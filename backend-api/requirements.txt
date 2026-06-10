@@ -13,6 +13,4 @@ httpx==0.28.1
 
 # Futuro OCR (se activa cuando se defina la librería)
 python-multipart==0.0.20
-Pillow==11.0.0
-pytesseract==0.3.13
 firebase-admin==6.6.0
