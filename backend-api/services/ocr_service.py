@@ -1,4 +1,5 @@
 import base64
+import re
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 
@@ -51,13 +52,12 @@ def build_receipt_ocr_prompt() -> str:
     return """
 Eres el módulo OCR inteligente de Monetra.
 
-Tu tarea es analizar la imagen de una factura, recibo o comprobante y extraer información financiera útil para registrar un gasto automáticamente.
+Analiza la imagen de una factura, recibo o comprobante y extrae información financiera útil para registrar un gasto automáticamente.
 
 Usa únicamente la información visible en la imagen.
 No inventes datos.
 Si no puedes identificar un campo, usa null.
-No incluyas markdown.
-Responde únicamente con JSON válido.
+Responde únicamente con JSON válido, sin markdown y sin texto adicional.
 
 La estructura exacta debe ser:
 
@@ -103,10 +103,47 @@ def normalize_amount(value: Any) -> Optional[float]:
     if value is None:
         return None
 
-    try:
+    if isinstance(value, (int, float)):
         amount = float(value)
         return amount if amount > 0 else None
-    except (TypeError, ValueError):
+
+    text = str(value)
+    text = text.replace("COP", "")
+    text = text.replace("$", "")
+    text = text.replace(" ", "")
+    text = re.sub(r"[^\d.,]", "", text)
+
+    if not text:
+        return None
+
+    has_dot = "." in text
+    has_comma = "," in text
+
+    if has_dot and has_comma:
+        last_dot = text.rfind(".")
+        last_comma = text.rfind(",")
+
+        if last_dot > last_comma:
+            text = text.replace(",", "")
+        else:
+            text = text.replace(".", "").replace(",", ".")
+    elif has_comma:
+        parts = text.split(",")
+
+        if len(parts) == 2 and len(parts[1]) <= 2:
+            text = text.replace(",", ".")
+        else:
+            text = text.replace(",", "")
+    elif has_dot:
+        parts = text.split(".")
+
+        if len(parts) > 2 or len(parts[-1]) == 3:
+            text = text.replace(".", "")
+
+    try:
+        amount = float(text)
+        return amount if amount > 0 else None
+    except ValueError:
         return None
 
 
@@ -119,6 +156,77 @@ def normalize_text(value: Any) -> Optional[str]:
     return text if text else None
 
 
+def extract_amount_from_text(text: str) -> Optional[float]:
+    possible_amounts = re.findall(r"(?:COP|\$)?\s*\d[\d.,]{2,}", text, re.I)
+
+    amounts = [
+        amount
+        for amount in (normalize_amount(item) for item in possible_amounts)
+        if amount is not None and amount >= 100
+    ]
+
+    return max(amounts) if amounts else None
+
+
+def extract_date_from_text(text: str) -> Optional[str]:
+    patterns = [
+        r"(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})",
+        r"(\d{1,2})[-/.](\d{1,2})[-/.](\d{2,4})",
+    ]
+
+    for pattern in patterns:
+        match = re.search(pattern, text)
+
+        if not match:
+            continue
+
+        groups = match.groups()
+
+        try:
+            if len(groups[0]) == 4:
+                date = datetime(
+                    int(groups[0]),
+                    int(groups[1]),
+                    int(groups[2]),
+                )
+            else:
+                year = int(groups[2])
+
+                if year < 100:
+                    year += 2000
+
+                date = datetime(
+                    year,
+                    int(groups[1]),
+                    int(groups[0]),
+                )
+
+            return date.strftime("%Y-%m-%d")
+        except ValueError:
+            continue
+
+    return None
+
+
+def suggest_category(text: str) -> str:
+    normalized = str(text or "").lower()
+
+    categories = [
+        ("Alimentación", ["restaurante", "comida", "mercado", "supermercado", "panaderia", "cafe"]),
+        ("Transporte", ["taxi", "uber", "didi", "gasolina", "combustible", "parqueadero", "peaje"]),
+        ("Salud", ["farmacia", "drogueria", "medicamento", "clinica", "salud"]),
+        ("Educación", ["universidad", "colegio", "libro", "curso", "papeleria"]),
+        ("Ocio", ["cine", "bar", "juego", "entretenimiento", "discoteca"]),
+        ("Servicios", ["servicio", "energia", "agua", "internet", "telefono"]),
+    ]
+
+    for category, keywords in categories:
+        if any(keyword in normalized for keyword in keywords):
+            return category
+
+    return "Sin categoría"
+
+
 def normalize_detected_fields(fields: Dict[str, Any]) -> Dict[str, bool]:
     return {
         "monto": normalize_bool(fields.get("monto")),
@@ -128,22 +236,61 @@ def normalize_detected_fields(fields: Dict[str, Any]) -> Dict[str, bool]:
     }
 
 
-def normalize_ocr_response(response_json: Dict[str, Any]) -> Dict[str, Any]:
-    raw_text = normalize_text(response_json.get("textoExtraido")) or ""
+def build_fallback_data_from_text(raw_text: str) -> Dict[str, Any]:
+    amount = extract_amount_from_text(raw_text)
+    date = extract_date_from_text(raw_text)
+    category = suggest_category(raw_text)
+
+    warnings = [
+        "Gemini no devolvió JSON válido; se generó una extracción básica desde el texto recibido."
+    ]
+
+    if amount is None:
+        warnings.append("No se pudo identificar el monto automáticamente.")
+
+    if not date:
+        warnings.append("No se pudo identificar la fecha automáticamente.")
+
+    return {
+        "tipo": "gasto",
+        "monto": amount,
+        "fecha": date,
+        "comercio": None,
+        "descripcion": "Gasto registrado por OCR",
+        "categoria": category,
+        "moneda": "COP",
+        "origen": "ocr",
+        "requiereRevision": True,
+        "camposDetectados": {
+            "monto": amount is not None,
+            "fecha": date is not None,
+            "comercio": False,
+            "descripcion": True,
+        },
+        "advertencias": warnings,
+        "textoOriginal": raw_text,
+    }
+
+
+def normalize_ocr_response(response_json: Dict[str, Any], raw_text: str = "") -> Dict[str, Any]:
+    if not response_json:
+        return build_fallback_data_from_text(raw_text)
+
+    extracted_text = normalize_text(response_json.get("textoExtraido")) or raw_text or ""
 
     data = response_json.get("datosExtraidos") or {}
 
     amount = normalize_amount(data.get("monto"))
     date = normalize_text(data.get("fecha"))
     store = normalize_text(data.get("comercio"))
-    description = (
-        normalize_text(data.get("descripcion"))
-        or f"Compra en {store}"
-        if store
-        else "Gasto registrado por OCR"
-    )
 
-    category = normalize_text(data.get("categoria")) or "Sin categoría"
+    if store:
+        default_description = f"Compra en {store}"
+    else:
+        default_description = "Gasto registrado por OCR"
+
+    description = normalize_text(data.get("descripcion")) or default_description
+    category = normalize_text(data.get("categoria")) or suggest_category(extracted_text)
 
     warnings = data.get("advertencias") or []
 
@@ -155,20 +302,30 @@ def normalize_ocr_response(response_json: Dict[str, Any]) -> Dict[str, Any]:
     )
 
     if amount is None:
-        detected_fields["monto"] = False
-        warnings.append("No se pudo identificar el monto automáticamente.")
+        amount = extract_amount_from_text(extracted_text)
+        detected_fields["monto"] = amount is not None
 
     if not date:
-        detected_fields["fecha"] = False
-        warnings.append("No se pudo identificar la fecha automáticamente.")
+        date = extract_date_from_text(extracted_text)
+        detected_fields["fecha"] = date is not None
 
     if not store:
         detected_fields["comercio"] = False
-        warnings.append("No se pudo identificar claramente el comercio.")
 
     if not description:
         detected_fields["descripcion"] = False
         description = "Gasto registrado por OCR"
+    else:
+        detected_fields["descripcion"] = True
+
+    if amount is None:
+        warnings.append("No se pudo identificar el monto automáticamente.")
+
+    if not date:
+        warnings.append("No se pudo identificar la fecha automáticamente.")
+
+    if not store:
+        warnings.append("No se pudo identificar claramente el comercio.")
 
     return {
         "tipo": "gasto",
@@ -182,7 +339,7 @@ def normalize_ocr_response(response_json: Dict[str, Any]) -> Dict[str, Any]:
         "requiereRevision": True,
         "camposDetectados": detected_fields,
         "advertencias": list(dict.fromkeys(warnings)),
-        "textoOriginal": raw_text,
+        "textoOriginal": extracted_text,
     }
 
 
@@ -203,9 +360,15 @@ async def process_receipt_image(file: UploadFile) -> Dict[str, Any]:
             response_mime_type="application/json",
         )
 
-        response_json = gemini_response.get("json") or {}
+        response_json = gemini_response.get("json")
+        raw_text = gemini_response.get("texto") or ""
 
-        data = normalize_ocr_response(response_json)
+        data = normalize_ocr_response(response_json, raw_text)
+
+        advertencias = data["advertencias"]
+
+        if gemini_response.get("jsonParseError"):
+            advertencias.append(gemini_response["jsonParseError"])
 
         return {
             "exito": True,
@@ -221,7 +384,7 @@ async def process_receipt_image(file: UploadFile) -> Dict[str, Any]:
             "textoExtraido": data["textoOriginal"],
             "datosExtraidos": data,
             "requiereRevision": True,
-            "advertencias": data["advertencias"],
+            "advertencias": list(dict.fromkeys(advertencias)),
             "procesadoEn": now_iso(),
         }
     except GeminiServiceError as error:
@@ -230,5 +393,5 @@ async def process_receipt_image(file: UploadFile) -> Dict[str, Any]:
         ) from error
     except Exception as error:
         raise OCRServiceError(
-            "No fue posible procesar el documento con OCR inteligente."
+            f"No fue posible procesar el documento con OCR inteligente: {str(error)}"
         ) from error
