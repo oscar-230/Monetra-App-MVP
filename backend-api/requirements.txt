@@ -12,5 +12,6 @@ google-genai==1.14.0
 httpx==0.28.1
 
 # Futuro OCR (se activa cuando se defina la librería)
-# pytesseract==0.3.13
-# Pillow==11.0.0
+python-multipart==0.0.20
+Pillow==11.0.0
+pytesseract==0.3.13
