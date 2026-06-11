@@ -1,10 +1,14 @@
-// frontend/src/App.jsx
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute from './components/ui/ProtectedRoute';
 import { LoginView } from './views/auth/LoginView';
 import { RegisterView } from './views/auth/RegisterView';
 import { DashboardView } from './views/dashboard/DashboardView';
+import { Registro } from './views/registro/Registro';
+
+const Analisis = () => <div>Análisis</div>;
+const Ahorros  = () => <div>Ahorros</div>;
+const Perfil   = () => <div>Perfil</div>;
 
 function App() {
   return (
@@ -16,13 +20,45 @@ function App() {
           <Route path="/register" element={<RegisterView />} />
 
           {/* Rutas Privadas Protegidas */}
-          <Route 
-            path="/dashboard" 
+          <Route
+            path="/dashboard"
             element={
               <ProtectedRoute>
                 <DashboardView />
               </ProtectedRoute>
-            } 
+            }
+          />
+          <Route
+            path="/registro"
+            element={
+              <ProtectedRoute>
+                <Registro />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/analisis"
+            element={
+              <ProtectedRoute>
+                <Analisis />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/ahorros"
+            element={
+              <ProtectedRoute>
+                <Ahorros />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/perfil"
+            element={
+              <ProtectedRoute>
+                <Perfil />
+              </ProtectedRoute>
+            }
           />
 
           {/* Redirección por defecto */}
