@@ -8,9 +8,8 @@ python-dotenv==1.0.1
 # Google Gemini SDK
 google-genai==1.14.0
 
-# Utilidades HTTP (para consumir APIs externas si se necesita)
+# Utilidades HTTP (para consumir APIs externas)
 httpx==0.28.1
 
-# Futuro OCR (se activa cuando se defina la librería)
-python-multipart==0.0.20
-firebase-admin==6.6.0
+# OCR - procesamiento de imágenes
+Pillow==11.0.0
