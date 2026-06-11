@@ -1,41 +1,237 @@
 // frontend/src/views/dashboard/DashboardView.jsx
-import { useState } from 'react';
-import { Navbar } from '../../components/layout/Navbar';
+import { useState, useRef, useEffect } from 'react';
 import useAuth from '../../hooks/useAuth';
+import { BottomNav } from '../../components/layout/BottomNav';
+import './DashboardView.css';
+
+const transactions = [
+  {
+    id: 1,
+    name: 'Hamburguesa',
+    time: 'Hace 2 horas',
+    amount: '-$32.500',
+    type: 'neg',
+    iconBg: '#fef3f0',
+    iconColor: '#c0392b',
+    icon: (
+      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+          d="M21 15a2 2 0 01-2 2H5a2 2 0 01-2-2V9a2 2 0 012-2h14a2 2 0 012 2v6z" />
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 11h18" />
+      </svg>
+    ),
+  },
+  {
+    id: 2,
+    name: 'Netflix Premium',
+    time: 'Ayer',
+    amount: '-$25.900',
+    type: 'neg',
+    iconBg: '#f3f0fe',
+    iconColor: '#5c5fad',
+    icon: (
+      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+          d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+      </svg>
+    ),
+  },
+  {
+    id: 3,
+    name: 'Transferencia Carlos',
+    time: 'Hace 2 días',
+    amount: '+$14.500',
+    type: 'pos',
+    iconBg: '#e6f5ee',
+    iconColor: '#1a7a50',
+    icon: (
+      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+          d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+      </svg>
+    ),
+  },
+];
+
+const donutSegments = [
+  { color: '#1a7a50', label: 'Comida (45%)' },
+  { color: '#e0a500', label: 'Transp (25%)' },
+  { color: '#5c5fad', label: 'Otros (13%)' },
+  { color: '#e0e0e0', label: 'Más (17%)' },
+];
 
 export const DashboardView = () => {
-  const { user } = useAuth();
-  // Estado local para capturar qué pestaña se presiona en el Navbar
+  const { user, cerrarSesion } = useAuth();
   const [seccionActiva, setSeccionActiva] = useState('dashboard');
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropdownRef = useRef(null);
 
   const obtenerPrimerNombre = () => {
     if (!user?.displayName) return 'Estratega';
     return user.displayName.split(' ')[0];
   };
 
-  // Función para renderizar dinámicamente el contenido central
+  // Cierra el dropdown al hacer click fuera
+  useEffect(() => {
+    const handler = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
   const renderContenido = () => {
     switch (seccionActiva) {
       case 'dashboard':
         return (
-          <div className="relative overflow-hidden rounded-2xl border border-slate-800/80 bg-gradient-to-b from-[#111827] to-[#0d1117] p-8 shadow-xl animate-in fade-in duration-200">
-            <div className="absolute -right-20 -top-20 h-60 w-60 rounded-full bg-emerald-500/10 blur-3xl"></div>
-            <div className="relative z-10 max-w-xl">
-              <span className="inline-flex items-center rounded-md bg-emerald-500/10 px-2 py-1 text-xs font-medium text-emerald-400 ring-1 ring-inset ring-emerald-500/20 mb-4">
-                MVP Activo
-              </span>
-              <h3 className="text-xl font-bold text-slate-200">Bienvenido a Monetra</h3>
-              <p className="mt-3 text-sm text-slate-400 leading-relaxed">
-                Estamos preparando tu entorno analítico. Tu dinero disponible, el consolidado de gastos indexados por OCR y las recomendaciones predictivas de Gemini 2.5 Flash aparecerán en este panel muy pronto.
+          <div className="content-section">
+            {/* Greeting */}
+            <div className="greeting-section">
+              <h2 className="greeting-title">
+                Hola, {obtenerPrimerNombre()}
+              </h2>
+              <p className="greeting-subtitle">
+                Tu salud financiera se ve sólida hoy.
               </p>
-              <div className="mt-6 flex flex-wrap gap-3">
-                <div className="flex items-center gap-2 rounded-xl bg-slate-800/60 border border-slate-800 px-4 py-2 text-xs font-medium text-slate-300">
-                  <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                  Autenticación Lista
+            </div>
+
+            {/* Balance Card — full width */}
+            <div
+              className="balance-card"
+            >
+              <div
+                className="balance-card-decoration large"
+              />
+              <div
+                className="balance-card-decoration small"
+              />
+              <p className="balance-label">
+                Balance Total
+              </p>
+              <p className="balance-amount">$200.450</p>
+              <div className="balance-buttons">
+                <button
+                  className="balance-btn"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                  Ingreso
+                </button>
+                <button
+                  className="balance-btn"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
+                  </svg>
+                  Gasto
+                </button>
+              </div>
+            </div>
+
+            {/* Savings + AI row */}
+            <div className="grid-2col">
+              {/* Savings */}
+              <div className="card">
+                <div className="card-header">
+                  <svg className="card-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                      d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                  </svg>
+                  <span
+                    className="card-badge"
+                  >
+                    Meta: Viaje
+                  </span>
                 </div>
-                <div className="flex items-center gap-2 rounded-xl bg-slate-800/60 border border-slate-800 px-4 py-2 text-xs font-medium text-slate-300">
-                  <span className="h-2 w-2 rounded-full bg-cyan-400"></span>
-                  Firestore Vinculado
+                <p className="card-title">Progreso de Ahorro</p>
+                <p className="card-subtitle">$1.200.500 / $3.000.000</p>
+                <div className="progress-bar">
+                  <div className="progress-fill" style={{ width: '40%' }} />
+                </div>
+                <p className="progress-text">40% completado</p>
+              </div>
+
+              {/* AI Insights */}
+              <div
+                className="ai-card"
+              >
+                <p className="ai-label">
+                  ✦ AI Insights
+                </p>
+                <p className="ai-title">
+                  Gasto estimado próximo mes: $100.200
+                </p>
+                <p className="ai-description">
+                  Basado en tus patrones de suscripciones y renta actual.
+                </p>
+                <button
+                  className="ai-btn"
+                >
+                  Ver análisis detallado
+                </button>
+              </div>
+            </div>
+
+            {/* Chart + Activity row */}
+            <div className="grid-2col">
+              {/* Donut Chart */}
+              <div className="card">
+                <p className="card-title" style={{ marginBottom: '1rem' }}>Distribución de Gastos</p>
+                <div className="chart-container">
+                  <svg width="110" height="110" viewBox="0 0 110 110" className="chart-svg">
+                    <circle cx="55" cy="55" r="38" fill="none" stroke="#f0f0f0" strokeWidth="16" />
+                    <circle cx="55" cy="55" r="38" fill="none" stroke="#1a7a50" strokeWidth="16"
+                      strokeDasharray="107 131" strokeDashoffset="0" transform="rotate(-90 55 55)" />
+                    <circle cx="55" cy="55" r="38" fill="none" stroke="#e0a500" strokeWidth="16"
+                      strokeDasharray="59 179" strokeDashoffset="-107" transform="rotate(-90 55 55)" />
+                    <circle cx="55" cy="55" r="38" fill="none" stroke="#5c5fad" strokeWidth="16"
+                      strokeDasharray="31 207" strokeDashoffset="-166" transform="rotate(-90 55 55)" />
+                    <circle cx="55" cy="55" r="38" fill="none" stroke="#e0e0e0" strokeWidth="16"
+                      strokeDasharray="41 197" strokeDashoffset="-197" transform="rotate(-90 55 55)" />
+                    <text x="55" y="51" textAnchor="middle" fontSize="10" fill="#999" fontFamily="sans-serif">Total</text>
+                    <text x="55" y="64" textAnchor="middle" fontSize="13" fontWeight="600" fill="#222" fontFamily="sans-serif">$1.2M</text>
+                  </svg>
+                  <div className="chart-legend">
+                    {donutSegments.map(s => (
+                      <div key={s.label} className="legend-item">
+                        <div className="legend-dot" style={{ background: s.color }} />
+                        {s.label}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Recent Activity */}
+              <div className="card">
+                <div className="activity-header">
+                  <p className="activity-title">Actividad Reciente</p>
+                  <button className="activity-link">Ver Todo</button>
+                </div>
+                <div className="activity-list">
+                  {transactions.map(tx => (
+                    <div key={tx.id} className="activity-item">
+                      <div
+                        className="activity-icon"
+                        style={{ background: tx.iconBg, color: tx.iconColor }}
+                      >
+                        {tx.icon}
+                      </div>
+                      <div className="activity-info">
+                        <p className="activity-name">{tx.name}</p>
+                        <p className="activity-time">{tx.time}</p>
+                      </div>
+                      <p
+                        className="activity-amount"
+                        style={{ color: tx.type === 'neg' ? '#c0392b' : '#1a7a50' }}
+                      >
+                        {tx.amount}
+                      </p>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
@@ -43,29 +239,14 @@ export const DashboardView = () => {
         );
 
       default:
-        // Render genérico elegante para las secciones en desarrollo
-        const nombresSecciones = {
-          ocr: 'Módulo de Mis Gastos (OCR con Inteligencia Artificial)',
-          ahorros: 'Sistema de Proyección de Metas de Ahorro',
-          ia: 'Consultoría Predictiva y Recomendaciones con Gemini 2.5 Flash'
-        };
-        
         return (
-          <div className="rounded-2xl border border-dashed border-slate-800 bg-[#111827]/30 p-12 text-center shadow-xl animate-in fade-in zoom-in-95 duration-200">
-            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-cyan-500/10 text-cyan-400 mb-4">
-              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
-              </svg>
-            </div>
-            <h3 className="text-lg font-bold text-slate-200">{nombresSecciones[seccionActiva]}</h3>
-            <p className="mx-auto mt-2 max-w-sm text-sm text-slate-500">
-              Esta sección se encuentra actualmente en fase de maquetación y diseño de arquitectura limpia. Pronto se conectará con el backend de FastAPI.
-            </p>
-            <button 
+          <div className="dev-section">
+            <p className="dev-text">Sección en desarrollo</p>
+            <button
               onClick={() => setSeccionActiva('dashboard')}
-              className="mt-6 cursor-pointer rounded-xl bg-slate-800 px-4 py-2 text-xs font-semibold text-emerald-400 hover:bg-slate-700 transition-colors"
+              className="dev-btn"
             >
-              ← Volver al Dashboard Principal
+              ← Volver al inicio
             </button>
           </div>
         );
@@ -73,21 +254,74 @@ export const DashboardView = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#0b0f17] text-slate-100 font-sans">
-      {/* Pasamos los estados al Navbar para que sea interactivo */}
-      <Navbar seccionActiva={seccionActiva} setSeccionActiva={setSeccionActiva} />
+    <div className="dashboard-container">
+      {/* Header */}
+      <header className="dashboard-header">
+        <span className="dashboard-header-title">Monetra</span>
 
-      <main className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-        <div className="mb-8">
-          <h2 className="text-3xl font-extrabold tracking-tight text-white">
-            ¡Hola, <span className="bg-gradient-to-r from-emerald-400 to-teal-400 bg-clip-text text-transparent">{obtenerPrimerNombre()}</span>!
-          </h2>
-          <p className="mt-1 text-sm text-slate-400">Este es el estado actual de tus finanzas para este periodo.</p>
+        <div className="header-actions">
+          {/* Campana */}
+          <button className="header-btn">
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 10-12 0v3.159c0 .538-.214 1.055-.595 1.437L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+            </svg>
+          </button>
+
+          {/* Avatar + Dropdown */}
+          <div className="avatar-dropdown" ref={dropdownRef}>
+            <button
+              onClick={() => setDropdownOpen(!dropdownOpen)}
+              className="avatar-btn"
+            >
+              {user?.displayName?.charAt(0)?.toUpperCase() || 'A'}
+            </button>
+
+            {dropdownOpen && (
+              <div className="dropdown-menu">
+                {/* Info usuario */}
+                <div className="dropdown-info">
+                  <p className="dropdown-info-name">
+                    {user?.displayName || 'Usuario'}
+                  </p>
+                  <p className="dropdown-info-email">{user?.email}</p>
+                </div>
+
+                {/* Opciones */}
+                <div className="dropdown-options">
+                  <button
+                    onClick={() => { setDropdownOpen(false); setSeccionActiva('perfil'); }}
+                    className="dropdown-btn"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                        d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                    Mi perfil
+                  </button>
+
+                  <button
+                    onClick={cerrarSesion}
+                    className="dropdown-btn logout"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                        d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                    </svg>
+                    Cerrar sesión
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
+      </header>
 
-        {/* Renderizado dinámico según el click */}
+      <main className="dashboard-main">
         {renderContenido()}
       </main>
+
+      <BottomNav seccionActiva={seccionActiva} setSeccionActiva={setSeccionActiva} />
     </div>
   );
 };
