@@ -1,8 +1,11 @@
-
 from fastapi import APIRouter, HTTPException, Query, Request
 
-from schemas.savings_goal_schemas import SavingsGoalCreate, SavingsGoalUpdate
+from schemas.savings_goal_schemas import SavingsGoalCreate, SavingsGoalUpdate, AbonoCreate
 from services.firebase_service import get_authenticated_uid
+from services.savings_goal_progress_service import (
+    get_all_goals_progress,
+    get_goal_progress,
+)
 from services.savings_goal_validation_service import (
     SavingsGoalValidationError,
     validate_savings_goal_create,
@@ -17,12 +20,16 @@ from services.savings_goals_service import (
     update_goal,
 )
 
+from services.savings_goal_abono_service import (
+     AbonoValidationError,
+     register_abono,
+)
+
 router = APIRouter()
 
 
 @router.post("/")
 def create_savings_goal(payload: SavingsGoalCreate, request: Request):
-    
     uid = get_authenticated_uid(request)
 
     try:
@@ -47,7 +54,6 @@ def list_savings_goals(
     request: Request,
     soloActivas: bool = Query(default=False),
 ):
-    
     uid = get_authenticated_uid(request)
 
     try:
@@ -60,10 +66,33 @@ def list_savings_goals(
     except SavingsGoalServiceError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
 
+@router.get("/progress/all")
+def get_all_goals_progress_endpoint(
+    request: Request,
+    soloActivas: bool = Query(default=False),
+):
+    uid = get_authenticated_uid(request)
+
+    try:
+        return get_all_goals_progress(uid, solo_activas=soloActivas)
+    except SavingsGoalServiceError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+
+
+@router.post("/{goal_id}/abonos")
+def add_abono(goal_id: str, payload: AbonoCreate, request: Request):
+    
+    uid = get_authenticated_uid(request)
+ 
+    try:
+        return register_abono(uid, goal_id, payload.monto)
+    except AbonoValidationError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+    except SavingsGoalServiceError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
 
 @router.get("/{goal_id}")
 def get_savings_goal(goal_id: str, request: Request):
-    """Retorna una meta específica del usuario."""
     uid = get_authenticated_uid(request)
 
     try:
@@ -72,9 +101,18 @@ def get_savings_goal(goal_id: str, request: Request):
         raise HTTPException(status_code=404, detail=str(error)) from error
 
 
+@router.get("/{goal_id}/progress")
+def get_goal_progress_endpoint(goal_id: str, request: Request):
+    uid = get_authenticated_uid(request)
+
+    try:
+        return get_goal_progress(uid, goal_id)
+    except SavingsGoalServiceError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+
+
 @router.put("/{goal_id}")
 def update_savings_goal(goal_id: str, payload: SavingsGoalUpdate, request: Request):
-    """Actualiza los campos enviados de una meta existente."""
     uid = get_authenticated_uid(request)
 
     try:
@@ -100,7 +138,6 @@ def delete_savings_goal(
     request: Request,
     confirmar: bool = Query(default=False),
 ):
-    
     uid = get_authenticated_uid(request)
 
     if not confirmar:
