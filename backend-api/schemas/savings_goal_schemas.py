@@ -24,3 +24,7 @@ class SavingsGoalUpdate(BaseModel):
     descripcion: Optional[str] = Field(default=None, max_length=200)
     moneda: Optional[str] = None
     estado: Optional[GoalStatus] = None
+
+class AbonoCreate(BaseModel):
+    """Datos requeridos para registrar un abono a una meta de ahorro."""
+    monto: float = Field(gt=0)
