@@ -9,6 +9,7 @@ from routers.movements_router import router as movements_router
 from routers.ocr_router import router as ocr_router
 from routers.predictions_router import router as predictions_router
 from routers.reports_router import router as reports_router
+from routers.savings_goals_router import router as savings_goals_router
 
 load_dotenv()
 
@@ -37,6 +38,7 @@ app.include_router(reports_router, prefix="/api/reports", tags=["Reportes"])
 app.include_router(predictions_router, prefix="/api/predictions", tags=["Predicciones"])
 app.include_router(ai_router, prefix="/api/ai", tags=["IA Financiera"])
 app.include_router(ocr_router, prefix="/api/ocr", tags=["OCR"])
+app.include_router(savings_goals_router, prefix="/goals", tags=["Metas de Ahorro"])
 
 
 @app.get("/")
