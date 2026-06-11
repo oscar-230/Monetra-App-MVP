@@ -4,6 +4,11 @@ from fastapi import APIRouter, HTTPException, Query, Request
 
 from schemas.financial_data_schemas import MovementCreate, MovementUpdate
 from services.firebase_service import get_authenticated_uid
+from services.movement_form_service import load_movement_for_edit
+from services.movement_validation_service import (
+    MovementValidationError,
+    validate_movement_update,
+)
 from services.movements_service import (
     MovementServiceError,
     create_movement,
@@ -58,6 +63,14 @@ def get_user_movement(movement_id: str, request: Request):
     except MovementServiceError as error:
         raise HTTPException(status_code=404, detail=str(error)) from error
 
+@router.get("/{movement_id}/edit-form")
+def get_movement_form_data(movement_id: str, request: Request):
+    uid = get_authenticated_uid(request)
+
+    try:
+        return load_movement_for_edit(uid, movement_id)
+    except MovementServiceError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
 
 @router.put("/{movement_id}")
 def update_user_movement(
@@ -67,6 +80,19 @@ def update_user_movement(
 ):
     uid = get_authenticated_uid(request)
 
+    # Validación de negocio
+    try:
+        validate_movement_update(payload)
+    except MovementValidationError as error:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "mensaje": "Los datos enviados no son válidos.",
+                "errores": error.errors,
+            },
+        ) from error
+
+    # Actualización en Firestore
     try:
         return update_movement(uid, movement_id, payload)
     except MovementServiceError as error:
