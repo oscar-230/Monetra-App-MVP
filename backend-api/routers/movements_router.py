@@ -17,6 +17,7 @@ from services.movements_service import (
     list_movements,
     update_movement,
 )
+from services.reports_service import generate_summary_after_deletion
 
 router = APIRouter()
 
@@ -63,6 +64,7 @@ def get_user_movement(movement_id: str, request: Request):
     except MovementServiceError as error:
         raise HTTPException(status_code=404, detail=str(error)) from error
 
+
 @router.get("/{movement_id}/edit-form")
 def get_movement_form_data(movement_id: str, request: Request):
     uid = get_authenticated_uid(request)
@@ -72,6 +74,7 @@ def get_movement_form_data(movement_id: str, request: Request):
     except MovementServiceError as error:
         raise HTTPException(status_code=404, detail=str(error)) from error
 
+
 @router.put("/{movement_id}")
 def update_user_movement(
     movement_id: str,
@@ -80,7 +83,6 @@ def update_user_movement(
 ):
     uid = get_authenticated_uid(request)
 
-    # Validación de negocio
     try:
         validate_movement_update(payload)
     except MovementValidationError as error:
@@ -92,7 +94,6 @@ def update_user_movement(
             },
         ) from error
 
-    # Actualización en Firestore
     try:
         return update_movement(uid, movement_id, payload)
     except MovementServiceError as error:
@@ -114,6 +115,14 @@ def delete_user_movement(
         )
 
     try:
-        return delete_movement(uid, movement_id)
+        resultado = delete_movement(uid, movement_id)
     except MovementServiceError as error:
         raise HTTPException(status_code=404, detail=str(error)) from error
+
+    # Retornar confirmación + historial actualizado en una sola respuesta
+    resumen = generate_summary_after_deletion(uid)
+
+    return {
+        **resultado,
+        "resumenActualizado": resumen,
+    }
