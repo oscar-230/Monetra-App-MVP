@@ -6,9 +6,9 @@ import { RegisterView } from './views/auth/RegisterView';
 import { DashboardView } from './views/dashboard/DashboardView';
 import { Registro } from './views/registro/Registro';
 import { MovimientosView } from './views/movimientos/MovimientosView';
+import { SavingsView } from './views/ahorros/SavingsView';
 
 const Analisis = () => <div>Análisis</div>;
-const Ahorros  = () => <div>Ahorros</div>;
 
 function App() {
   return (
@@ -48,7 +48,7 @@ function App() {
             path="/ahorros"
             element={
               <ProtectedRoute>
-                <Ahorros />
+                <SavingsView />
               </ProtectedRoute>
             }
           />
