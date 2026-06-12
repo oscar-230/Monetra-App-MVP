@@ -11,6 +11,19 @@ export const SavingsView = () => {
     monto: '',
     fechaEstimada: ''
   });
+  const [savingsGoals, setSavingsGoals] = useState([
+    {
+      id: 1,
+      nombre: 'Computador',
+      montoObjetivo: 1800000,
+      montoActual: 900000,
+      fechaEstimada: '2024-12-31'
+    }
+  ]);
+  const [showTransactionModal, setShowTransactionModal] = useState(false);
+  const [transactionType, setTransactionType] = useState('deposit'); // 'deposit' or 'withdraw'
+  const [selectedGoalId, setSelectedGoalId] = useState(null);
+  const [transactionAmount, setTransactionAmount] = useState('');
 
   const challenges = [
     {
@@ -98,8 +111,14 @@ export const SavingsView = () => {
 
   const handleGoalSubmit = (e) => {
     e.preventDefault();
-    console.log('Nueva meta de ahorro:', goalForm);
-    // Here you would typically send the data to your backend
+    const newGoal = {
+      id: Date.now(),
+      nombre: goalForm.nombre,
+      montoObjetivo: parseInt(goalForm.monto),
+      montoActual: 0,
+      fechaEstimada: goalForm.fechaEstimada
+    };
+    setSavingsGoals(prev => [...prev, newGoal]);
     setShowGoalModal(false);
     setGoalForm({ nombre: '', monto: '', fechaEstimada: '' });
   };
@@ -107,6 +126,53 @@ export const SavingsView = () => {
   const handleGoalCancel = () => {
     setShowGoalModal(false);
     setGoalForm({ nombre: '', monto: '', fechaEstimada: '' });
+  };
+
+  const formatCurrency = (amount) => {
+    return '$' + amount.toLocaleString('es-CO');
+  };
+
+  const getLatestGoal = () => {
+    if (savingsGoals.length === 0) return null;
+    return savingsGoals[savingsGoals.length - 1];
+  };
+
+  const calculateProgress = (goal) => {
+    if (!goal || goal.montoObjetivo === 0) return 0;
+    return Math.round((goal.montoActual / goal.montoObjetivo) * 100);
+  };
+
+  const handleOpenTransactionModal = (goalId, type) => {
+    setSelectedGoalId(goalId);
+    setTransactionType(type);
+    setTransactionAmount('');
+    setShowTransactionModal(true);
+  };
+
+  const handleTransactionSubmit = (e) => {
+    e.preventDefault();
+    const amount = parseInt(transactionAmount);
+    if (!amount || amount <= 0) return;
+
+    setSavingsGoals(prev => prev.map(goal => {
+      if (goal.id === selectedGoalId) {
+        const newAmount = transactionType === 'deposit'
+          ? goal.montoActual + amount
+          : Math.max(0, goal.montoActual - amount);
+        return { ...goal, montoActual: newAmount };
+      }
+      return goal;
+    }));
+
+    setShowTransactionModal(false);
+    setTransactionAmount('');
+    setSelectedGoalId(null);
+  };
+
+  const handleTransactionCancel = () => {
+    setShowTransactionModal(false);
+    setTransactionAmount('');
+    setSelectedGoalId(null);
   };
 
   return (
@@ -121,14 +187,41 @@ export const SavingsView = () => {
             <p className="savings-overview-amount">$200.000</p>
             <p className="savings-overview-comparison">12% más que el mes pasado</p>
           </div>
-          <div className="savings-goal-progress">
-            <p className="savings-goal-label">Meta: Computador</p>
-            <p className="savings-goal-amount">$900.000 / $1.800.000</p>
-            <div className="savings-progress-bar">
-              <div className="savings-progress-fill" style={{ width: '75%' }} />
-            </div>
-            <p className="savings-progress-text">75% completado</p>
-          </div>
+          {(() => {
+            const latestGoal = getLatestGoal();
+            if (!latestGoal) return null;
+            const progress = calculateProgress(latestGoal);
+            return (
+              <div className="savings-goal-progress">
+                <p className="savings-goal-label">Meta: {latestGoal.nombre}</p>
+                <p className="savings-goal-amount">{formatCurrency(latestGoal.montoActual)} / {formatCurrency(latestGoal.montoObjetivo)}</p>
+                <div className="savings-progress-bar">
+                  <div className="savings-progress-fill" style={{ width: `${progress}%` }} />
+                </div>
+                <p className="savings-progress-text">{progress}% completado</p>
+                <div className="savings-goal-actions">
+                  <button
+                    className="savings-goal-action-btn deposit"
+                    onClick={() => handleOpenTransactionModal(latestGoal.id, 'deposit')}
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                    Añadir
+                  </button>
+                  <button
+                    className="savings-goal-action-btn withdraw"
+                    onClick={() => handleOpenTransactionModal(latestGoal.id, 'withdraw')}
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
+                    </svg>
+                    Retirar
+                  </button>
+                </div>
+              </div>
+            );
+          })()}
         </div>
 
         {/* Active Challenges Section */}
@@ -276,6 +369,56 @@ export const SavingsView = () => {
                   className="goal-modal-btn goal-modal-btn-submit"
                 >
                   Crear meta
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Transaction Modal */}
+      {showTransactionModal && (
+        <div className="goal-modal-overlay">
+          <div className="goal-modal">
+            <div className="goal-modal-header">
+              <h3 className="goal-modal-title">
+                {transactionType === 'deposit' ? 'Añadir dinero a la meta' : 'Retirar dinero de la meta'}
+              </h3>
+              <button
+                className="goal-modal-close"
+                onClick={handleTransactionCancel}
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <form onSubmit={handleTransactionSubmit} className="goal-modal-form">
+              <div className="goal-form-group">
+                <label className="goal-form-label">Monto</label>
+                <input
+                  type="number"
+                  value={transactionAmount}
+                  onChange={(e) => setTransactionAmount(e.target.value)}
+                  placeholder="Ej: 50000"
+                  className="goal-form-input"
+                  required
+                  min="1"
+                />
+              </div>
+              <div className="goal-modal-actions">
+                <button
+                  type="button"
+                  onClick={handleTransactionCancel}
+                  className="goal-modal-btn goal-modal-btn-cancel"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="goal-modal-btn goal-modal-btn-submit"
+                >
+                  {transactionType === 'deposit' ? 'Añadir' : 'Retirar'}
                 </button>
               </div>
             </form>

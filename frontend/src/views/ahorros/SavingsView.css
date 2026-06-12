@@ -118,6 +118,46 @@
   text-align: right;
 }
 
+.savings-goal-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.savings-goal-action-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.3s ease;
+  border: none;
+}
+
+.savings-goal-action-btn:hover {
+  opacity: 0.8;
+}
+
+.savings-goal-action-btn.deposit {
+  background: rgba(255, 255, 255, 0.25);
+  color: white;
+}
+
+.savings-goal-action-btn.withdraw {
+  background: rgba(255, 255, 255, 0.15);
+  color: white;
+}
+
+.savings-goal-action-btn svg {
+  width: 1rem;
+  height: 1rem;
+}
+
 /* Section styles */
 .savings-section {
   display: flex;
