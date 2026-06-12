@@ -3,6 +3,7 @@ from typing import Any, Dict, List
 
 from services.financial_indicators_service import calculate_financial_indicators
 from services.financial_metrics_service import calculate_financial_metrics
+from services.financial_history_service import collect_financial_history
 from services.movements_service import list_movements
 
 
@@ -110,4 +111,21 @@ def generate_financial_report(
         "porCategoria": metrics["categorias"]["gastosPorCategoria"],
         "porDia": group_by_day(movements),
         "movimientos": movements,
+    }
+
+
+def generate_summary_after_deletion(uid: str) -> Dict[str, Any]:
+    """
+    Genera un resumen financiero actualizado justo después de eliminar
+    un movimiento. Usa los últimos 6 meses como ventana de historial.
+    Sirve para que el frontend refresque el dashboard sin llamadas extra.
+    """
+    history = collect_financial_history(uid, meses=6)
+
+    return {
+        "historialActualizado": True,
+        "resumenGeneral": history["resumenGeneral"],
+        "promediosMensuales": history["promediosMensuales"],
+        "totalMovimientosActuales": history["totalMovimientosRecopilados"],
+        "historialMensual": history["historialMensual"],
     }
