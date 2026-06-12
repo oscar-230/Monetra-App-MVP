@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { BottomNav } from '../../components/layout/BottomNav';
 import { MovementCard } from '../../components/movimientos/MovementCard';
 import { MovementOptionsModal } from '../../components/movimientos/MovementOptionsModal';
@@ -30,7 +31,7 @@ const MOCK_DATA = [
 
 export const MovimientosView = () => {
   const [movimientos, setMovimientos] = useState(MOCK_DATA);
-
+  const navigate = useNavigate();
   const [selectedMovement, setSelectedMovement] =
     useState(null);
 
@@ -110,6 +111,13 @@ export const MovimientosView = () => {
           onDelete={handleDelete}
         />
       )}
+      <button
+        className="mv-fab"
+        onClick={() => navigate('/registro')}
+        aria-label="Nuevo movimiento"
+      >
+        +
+      </button>
 
       <BottomNav />
 

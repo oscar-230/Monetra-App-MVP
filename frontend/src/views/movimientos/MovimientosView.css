@@ -156,3 +156,64 @@
     padding: 1rem;
   }
 }
+/* ─── Floating Action Button ───────────────────────── */
+
+.mv-fab {
+  position: fixed;
+  right: 24px;
+  bottom: 90px;
+
+  width: 64px;
+  height: 64px;
+
+  border: none;
+  border-radius: 50%;
+
+  background: linear-gradient(
+    135deg,
+    #1a7a50,
+    #22a06b
+  );
+
+  color: white;
+  font-size: 2rem;
+  font-weight: 300;
+  line-height: 1;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  cursor: pointer;
+
+  box-shadow:
+    0 10px 25px rgba(26,122,80,.30),
+    0 4px 12px rgba(0,0,0,.12);
+
+  transition:
+    transform .2s ease,
+    box-shadow .2s ease;
+    
+  z-index: 50;
+}
+
+.mv-fab:hover {
+  transform: translateY(-3px);
+
+  box-shadow:
+    0 14px 30px rgba(26,122,80,.35),
+    0 8px 16px rgba(0,0,0,.15);
+}
+
+.mv-fab:active {
+  transform: scale(.95);
+}
+
+.mv-fab::before {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  background: rgba(26,122,80,.15);
+  z-index: -1;
+}
