@@ -16,7 +16,7 @@ const CATEGORIAS = [
 
 export const Registro = () => {
   const navigate = useNavigate();
-
+  const [tipoMovimiento, setTipoMovimiento] = useState('gasto');
   const [monto,       setMonto]     = useState('');
   const [categoria,   setCategoria] = useState('comida');
   const [nota,        setNota]      = useState('');
@@ -37,7 +37,7 @@ export const Registro = () => {
       return;
     }
     // Aquí conectarías con Firestore
-    console.log('Gasto guardado:', { monto: num, categoria, nota, adjuntarFoto });
+    console.log('Movimiento guardado:', { tipoMovimiento, monto: num, categoria, nota, adjuntarFoto });
     navigate('/dashboard');
   };
 
@@ -62,15 +62,21 @@ export const Registro = () => {
       <main className="rg-main">
         {/* Título */}
         <div className="rg-title-block">
-          <h1 className="rg-title">Nuevo gasto</h1>
+          <h1 className="rg-title">
+            Nuevo {tipoMovimiento}
+          </h1>
           <p className="rg-subtitle">
-            Registra tus gastos rápidamente para mantener tu salud financiera.
+            {tipoMovimiento === 'gasto'
+              ? 'Registra tus gastos rápidamente para mantener tu salud financiera.'
+              : 'Registra tus ingresos para llevar el control de tu dinero.'}
           </p>
         </div>
 
         {/* Monto */}
         <div className="rg-amount-card">
-          <p className="rg-amount-label">Monto del gasto</p>
+          <p className="rg-amount-label">
+            Monto del {tipoMovimiento}
+          </p>
           <div className="rg-amount-row">
             <span className="rg-dollar">$</span>
             <input
@@ -83,6 +89,7 @@ export const Registro = () => {
               aria-label="Monto del gasto"
             />
           </div>
+          
           {error && <p className="rg-error">{error}</p>}
           <button className="rg-scan-btn">
             <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -91,6 +98,28 @@ export const Registro = () => {
             </svg>
             Escanear factura (OCR)
           </button>
+        </div>
+        {/* Tipo de movimiento */}
+        <div className="rg-section">
+          <span className="rg-section-label">
+            Tipo de movimiento
+          </span>
+
+          <select
+            className="rg-type-select"
+            value={tipoMovimiento}
+            onChange={(e) =>
+              setTipoMovimiento(e.target.value)
+            }
+          >
+            <option value="gasto">
+              💸 Gasto
+            </option>
+
+            <option value="ingreso">
+              💰 Ingreso
+            </option>
+          </select>
         </div>
 
         {/* Categorías */}
@@ -147,7 +176,7 @@ export const Registro = () => {
 
         {/* Guardar */}
         <button className="rg-save-btn" onClick={handleGuardar}>
-          Guardar gasto
+          Guardar {tipoMovimiento}
         </button>
       </main>
 

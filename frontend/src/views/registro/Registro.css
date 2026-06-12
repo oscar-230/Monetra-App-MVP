@@ -429,3 +429,40 @@
   .rg-dollar { font-size: 1.75rem; }
   .rg-columns { grid-template-columns: 1fr; }
 }
+
+/* Tipo de movimiento */
+
+.rg-type-select {
+  width: 100%;
+  padding: 0.9rem 1rem;
+
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+
+  background: #ffffff;
+  color: #374151;
+
+  font-size: 0.95rem;
+  font-weight: 600;
+
+  cursor: pointer;
+  outline: none;
+
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.15s ease;
+}
+
+.rg-type-select:hover {
+  border-color: #1a7a50;
+}
+
+.rg-type-select:focus {
+  border-color: #1a7a50;
+  box-shadow: 0 0 0 4px rgba(26, 122, 80, 0.12);
+}
+
+.rg-type-select option {
+  font-weight: 500;
+}

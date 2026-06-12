@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { AppHeader } from '../../components/layout/AppHeader';
 import { BottomNav } from '../../components/layout/BottomNav';
 import { MovementCard } from '../../components/movimientos/MovementCard';
@@ -65,46 +66,29 @@ export const MovimientosView = () => {
   const [sortOrder, setSortOrder] = useState('desc');
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [seccionActiva, setSeccionActiva] = useState('movimientos');
+  const [selectedMovement, setSelectedMovement] = useState(null);
+  const [successMessage, setSuccessMessage] = useState('');
 
-  const [selectedMovement, setSelectedMovement] =
-    useState(null);
-
-  const [successMessage, setSuccessMessage] =
-    useState('');
+  // Traído del segundo archivo para permitir la navegación al registro
+  const navigate = useNavigate();
 
   const handleSave = (updatedMovement) => {
-
     setMovimientos((prev) =>
       prev.map((m) =>
-        m.id === updatedMovement.id
-          ? updatedMovement
-          : m
+        m.id === updatedMovement.id ? updatedMovement : m
       )
     );
-
     setSelectedMovement(null);
-
-    setSuccessMessage(
-      '✅ Movimiento actualizado correctamente.'
-    );
-
+    setSuccessMessage('✅ Movimiento actualizado correctamente.');
     setTimeout(() => {
       setSuccessMessage('');
     }, 3000);
   };
 
   const handleDelete = (id) => {
-
-    setMovimientos((prev) =>
-      prev.filter((m) => m.id !== id)
-    );
-
+    setMovimientos((prev) => prev.filter((m) => m.id !== id));
     setSelectedMovement(null);
-
-    setSuccessMessage(
-      '🗑️ Movimiento eliminado correctamente.'
-    );
-
+    setSuccessMessage('🗑️ Movimiento eliminado correctamente.');
     setTimeout(() => {
       setSuccessMessage('');
     }, 3000);
@@ -181,7 +165,6 @@ export const MovimientosView = () => {
 
   return (
     <div className="mv-container">
-
       <AppHeader seccionActiva={seccionActiva} setSeccionActiva={setSeccionActiva} />
 
       {successMessage && (
@@ -258,16 +241,22 @@ export const MovimientosView = () => {
       {selectedMovement && (
         <MovementOptionsModal
           movement={selectedMovement}
-          onClose={() =>
-            setSelectedMovement(null)
-          }
+          onClose={() => setSelectedMovement(null)}
           onSave={handleSave}
           onDelete={handleDelete}
         />
       )}
 
-      <BottomNav />
+      {/* Botón flotante para registrar nuevo movimiento traído del segundo archivo */}
+      <button
+        className="mv-fab"
+        onClick={() => navigate('/registro')}
+        aria-label="Nuevo movimiento"
+      >
+        +
+      </button>
 
+      <BottomNav />
     </div>
   );
 };
