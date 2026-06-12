@@ -1,5 +1,6 @@
 // frontend/src/views/dashboard/DashboardView.jsx
 import { useState, useRef, useEffect } from 'react';
+import React from 'react';
 import useAuth from '../../hooks/useAuth';
 import { BottomNav } from '../../components/layout/BottomNav';
 import './DashboardView.css';

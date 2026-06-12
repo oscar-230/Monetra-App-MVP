@@ -1,32 +1,28 @@
 name: ⚛️ Frontend CI (React + Vite)
 
-# Configuración de los disparadores (Cuándo se despierta este robot)
 on:
   push:
     branches: [ main, development ]
     paths:
-      - 'frontend/**' # 💡 Solo se activa si los cambios ocurren dentro de la carpeta frontend
+      - 'frontend/**'
   pull_request:
     branches: [ main, development ]
     paths:
       - 'frontend/**'
 
 jobs:
-  build-frontend:
-    runs-on: ubuntu-latest # Usamos el mismo entorno Linux virtual en la nube
+  test-and-build:
+    runs-on: ubuntu-latest
 
     steps:
-    # Paso 1: Clonar y descargar el código de tu proyecto
     - name: 📂 Descargar código
       uses: actions/checkout@v4
 
-    # Paso 2: Configurar el entorno de Node.js en la versión estable v20
     - name: 🛠️ Configurar Node.js v20
       uses: actions/setup-node@v4
       with:
         node-version: '20'
 
-    # Paso 3: Guardar en caché los paquetes de npm para optimizar tiempos de ejecución futuros
     - name: 📦 Cachear dependencias de Node
       uses: actions/cache@v4
       with:
@@ -35,14 +31,32 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-node-
 
-    # Paso 4: Instalar las dependencias del proyecto usando instalación limpia (ci)
     - name: 📥 Instalar dependencias
       run: |
         cd frontend
         npm ci
 
-    # Paso 5: Validar la compilación de producción.
-    # Este paso es crítico: compila todo a HTML, JS y CSS nativos. Si falla, no se puede desplegar.
+    # ── Variables de entorno ficticias para que Vite no falle en build ──
+    # Los tests mockean Firebase, así que estos valores nunca llegan a usarse.
+    - name: 🔑 Crear .env.local para CI
+      run: |
+        cd frontend
+        cat > .env.local << 'EOF'
+        VITE_FIREBASE_API_KEY=ci-fake-key
+        VITE_FIREBASE_AUTH_DOMAIN=ci-fake.firebaseapp.com
+        VITE_FIREBASE_PROJECT_ID=ci-fake-project
+        VITE_FIREBASE_STORAGE_BUCKET=ci-fake.appspot.com
+        VITE_FIREBASE_MESSAGING_SENDER_ID=000000000000
+        VITE_FIREBASE_APP_ID=1:000000000000:web:fakeid
+        EOF
+
+    # ── Paso crítico: ejecutar suite de tests ────────────────────────────
+    - name: 🧪 Ejecutar tests con Vitest
+      run: |
+        cd frontend
+        npm run test
+
+    # ── Solo se llega aquí si todos los tests pasaron ────────────────────
     - name: 🚀 Validar compilación de producción (Build)
       run: |
         cd frontend
