@@ -5,10 +5,10 @@ import { LoginView } from './views/auth/LoginView';
 import { RegisterView } from './views/auth/RegisterView';
 import { DashboardView } from './views/dashboard/DashboardView';
 import { Registro } from './views/registro/Registro';
+import { MovimientosView } from './views/movimientos/MovimientosView';
 
 const Analisis = () => <div>Análisis</div>;
 const Ahorros  = () => <div>Ahorros</div>;
-const Perfil   = () => <div>Perfil</div>;
 
 function App() {
   return (
@@ -53,10 +53,10 @@ function App() {
             }
           />
           <Route
-            path="/perfil"
+            path="/movimientos"
             element={
               <ProtectedRoute>
-                <Perfil />
+                <MovimientosView />
               </ProtectedRoute>
             }
           />
