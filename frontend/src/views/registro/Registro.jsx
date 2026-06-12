@@ -1,8 +1,10 @@
 // frontend/src/views/dashboard/Registro.jsx
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './Registro.css';
 import { BottomNav } from '../../components/layout/BottomNav';
+import { scanInvoice } from '../../services/ocrApi';
+import { getMovements } from '../../services/movementApi';
 
 
 const CATEGORIAS = [
@@ -39,6 +41,44 @@ export const Registro = () => {
     // Aquí conectarías con Firestore
     console.log('Gasto guardado:', { monto: num, categoria, nota, adjuntarFoto });
     navigate('/dashboard');
+
+    const fileInputRef = useRef(null);
+
+    const [ocrData, setOcrData] = useState(null);
+    const [showPreview, setShowPreview] = useState(false);
+    const [loadingOCR, setLoadingOCR] = useState(false);
+
+    const handleFileSelect = async (e) => {
+    const file = e.target.files[0];
+
+    if (!file) return;
+
+    try {
+        setLoadingOCR(true);
+
+        const result = await scanInvoice(file);
+
+        setOcrData(result.data);
+
+        setShowPreview(true);
+      } catch (error) {
+        alert(error.message);
+      } finally {
+        setLoadingOCR(false);
+      }
+    };
+    useEffect(() => {
+      loadMovements();
+    }, []);
+
+    const loadMovements = async () => {
+      try {
+        const data = await getMovements();
+        setMovimientos(data);
+      } catch (error) {
+        console.error(error);
+      }
+    };
   };
 
   return (
@@ -84,13 +124,55 @@ export const Registro = () => {
             />
           </div>
           {error && <p className="rg-error">{error}</p>}
-          <button className="rg-scan-btn">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            style={{ display: 'none' }}
+            onChange={handleFileSelect}
+          />
+          <button className="rg-scan-btn" onClick={() => fileInputRef.current.click()}>
             <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round"
                 d="M9 3H5a2 2 0 00-2 2v4m0 6v4a2 2 0 002 2h4m6-18h4a2 2 0 012 2v4m0 6v4a2 2 0 01-2 2h-4" />
             </svg>
             Escanear factura (OCR)
           </button>
+          {
+            showPreview && ocrData && (
+              <div className="ocr-modal">
+                <div className="ocr-card">
+
+                  <h3>Datos detectados</h3>
+
+                  <p>
+                    Comercio:
+                    {ocrData.proveedor}
+                  </p>
+
+                  <p>
+                    Categoría:
+                    {ocrData.categoria}
+                  </p>
+
+                  <p>
+                    Fecha:
+                    {ocrData.fecha}
+                  </p>
+
+                  <p>
+                    Total:
+                    {ocrData.monto}
+                  </p>
+
+                  <button onClick={handleAcceptOCR}>
+                    Aceptar gasto
+                  </button>
+
+                </div>
+              </div>
+            )
+          }
         </div>
 
         {/* Categorías */}
