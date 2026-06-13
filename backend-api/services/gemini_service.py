@@ -3,8 +3,6 @@ from groq import Groq
 import json
 import re
 
-client = Groq(api_key=os.getenv("GROQ_API_KEY"))
-
 EXTRACT_INVOICE_PROMPT = """
 Eres un asistente especializado en análisis de facturas y comprobantes de pago.
 
@@ -42,6 +40,8 @@ async def analyze_invoice_text(ocr_text: str) -> dict:
             "error": "No hay texto para analizar"
         }
 
+    client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+    
     try:
         prompt = EXTRACT_INVOICE_PROMPT.format(text=ocr_text[:4000])
 
