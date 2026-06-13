@@ -11,7 +11,7 @@ vi.mock('react-router-dom', async (importOriginal) => {
   return { ...real, useNavigate: () => mockNavigate };
 });
 
-vi.mock('../../services/movementApi', () => ({
+vi.mock('../services/movementApi', () => ({
   createMovement: vi.fn().mockResolvedValue({}),
 }));
 
