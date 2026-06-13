@@ -10,7 +10,7 @@ export async function scanInvoice(file) {
     throw new Error('Debes iniciar sesión para escanear facturas.');
   }
 
-  const token = await currentUser.getIdToken();
+  const token = await currentUser.getIdToken(true);
 
   const formData = new FormData();
   formData.append('file', file);

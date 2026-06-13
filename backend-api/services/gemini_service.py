@@ -95,3 +95,40 @@ async def analyze_invoice_text(ocr_text: str) -> dict:
             "data": None,
             "error": f"Error al analizar el documento: {str(e)}"
         }
+    
+class GeminiServiceError(Exception):
+    pass
+
+
+async def generate_content_with_gemini(
+    prompt: str,
+    temperature: float = 0.3,
+    max_output_tokens: int = 1500,
+) -> dict:
+    client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+
+    try:
+        response = client.chat.completions.create(
+            model="llama-3.1-8b-instant",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=temperature,
+            max_tokens=max_output_tokens,
+        )
+
+        raw_text = response.choices[0].message.content.strip()
+        raw_text = re.sub(r"^```(?:json)?\s*", "", raw_text)
+        raw_text = re.sub(r"\s*```$", "", raw_text)
+
+        parsed = json.loads(raw_text)
+
+        return {
+            "modelo": "llama-3.1-8b-instant",
+            "json": parsed,
+        }
+
+    except json.JSONDecodeError as e:
+        raise GeminiServiceError(
+            f"No se pudo parsear la respuesta del LLM: {e}"
+        ) from e
+    except Exception as e:
+        raise GeminiServiceError(f"Error al llamar al LLM: {e}") from e
