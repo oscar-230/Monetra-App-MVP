@@ -15,15 +15,27 @@ const CATEGORIAS = [
   { id: 'Otros',        label: 'Otros',      emoji: '···' },
 ];
 
-// Mapea lo que devuelve Gemini a nuestras categorías
+// Mapea lo que devuelve el backend a nuestras categorías internas
 const mapearCategoria = (categoriaOCR) => {
   if (!categoriaOCR) return 'Otros';
-  const lower = categoriaOCR.toLowerCase();
-  if (lower.includes('comida') || lower.includes('restaurante') || lower.includes('aliment') || lower.includes('café') || lower.includes('cafe')) return 'Alimentación';
-  if (lower.includes('transporte') || lower.includes('taxi') || lower.includes('uber') || lower.includes('gasolina')) return 'Transporte';
-  if (lower.includes('ocio') || lower.includes('entretenimiento') || lower.includes('cine') || lower.includes('diversion')) return 'Ocio';
-  if (lower.includes('salud') || lower.includes('farmacia') || lower.includes('médico') || lower.includes('medico')) return 'Salud';
+  // Normalizar: quitar tildes y pasar a minúsculas para comparar
+  const normalizar = (s) => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  const lower = normalizar(categoriaOCR);
+
+  // Mapeo directo de los valores exactos que devuelve el backend
+  if (lower === 'comida')      return 'Alimentación';
+  if (lower === 'transporte')  return 'Transporte';
+  if (lower === 'diversion')   return 'Ocio';
+  if (lower === 'salud')       return 'Salud';
+  if (lower === 'compras')     return 'Compras';
+
+  // Fallback por palabras clave (por si el modelo responde diferente)
+  if (lower.includes('comida') || lower.includes('restaurante') || lower.includes('aliment') || lower.includes('cafe')) return 'Alimentación';
+  if (lower.includes('transporte') || lower.includes('taxi') || lower.includes('uber') || lower.includes('bus')) return 'Transporte';
+  if (lower.includes('diversion') || lower.includes('ocio') || lower.includes('cine') || lower.includes('entretenimiento')) return 'Ocio';
+  if (lower.includes('salud') || lower.includes('farmacia') || lower.includes('medico')) return 'Salud';
   if (lower.includes('compra') || lower.includes('supermercado') || lower.includes('tienda') || lower.includes('ropa')) return 'Compras';
+
   return 'Otros';
 };
 
@@ -104,10 +116,9 @@ export const Registro = () => {
       setMonto(String(ocrData.monto_total));
     }
 
-    // Categoría — intentamos mapear
-    if (ocrData.descripcion) {
-      setCategoria(mapearCategoria(ocrData.descripcion));
-    }
+    // Categoría — usar el campo categoria que devuelve el backend directamente
+    const catFuente = ocrData.categoria || ocrData.descripcion;
+    setCategoria(mapearCategoria(catFuente));
 
     // Fecha
     if (ocrData.fecha) {
@@ -350,7 +361,8 @@ export const Registro = () => {
                 <div className="ocr-field">
                   <span className="ocr-field-label">CATEGORÍA</span>
                   <span className="ocr-field-value ocr-category-pill">
-                    🍽️ {mapearCategoria(ocrData.descripcion)}
+                    {CATEGORIAS.find(c => c.id === mapearCategoria(ocrData.categoria || ocrData.descripcion))?.emoji || '···'}{' '}
+                    {CATEGORIAS.find(c => c.id === mapearCategoria(ocrData.categoria || ocrData.descripcion))?.label || 'Otros'}
                   </span>
                 </div>
                 <div className="ocr-field">

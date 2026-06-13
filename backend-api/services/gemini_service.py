@@ -21,14 +21,31 @@ Extrae la siguiente información y responde ÚNICAMENTE con un JSON válido, sin
     "proveedor": <nombre del comercio o empresa emisora, o null>,
     "numero_factura": <número de factura/comprobante, o null>,
     "impuesto": <monto del impuesto/IVA como número, o null>,
+    "categoria": <una de: "Comida", "Transporte", "Diversión", "Salud", "Compras" — elige la más apropiada según el tipo de negocio o servicio>,
     "confianza": <"alta", "media" o "baja" según la calidad del texto reconocido>,
     "notas": <observaciones relevantes o advertencias, o null>
 }}
 
-Reglas:
+Reglas para elegir la categoría:
+- "Transporte": tiquetes de bus, metro, taxi, Uber, aerolíneas, peajes, gasolina, parqueadero
+- "Comida": restaurantes, cafeterías, domicilios de comida. TAMBIÉN cuando los 
+  ítems comprados son alimentos: carnes, verduras, frutas, lácteos, granos, 
+  bebidas, productos de panadería — aunque el comercio sea un supermercado.
+- "Compras": supermercados o tiendas SOLO cuando los ítems son bienes no 
+  alimenticios: ropa, electrodomésticos, juguetes, artículos del hogar, 
+  aseo personal, papelería, etc.
+- "Diversión": cines, conciertos, parques de diversiones, streaming, videojuegos, hobbies
+- "Salud": farmacias, clínicas, consultas médicas, ópticas, gimnasios
+
+IMPORTANTE: Analiza primero los ítems del detalle de la factura para elegir 
+la categoría. El nombre del comercio es secundario. Si los ítems son 
+alimentos → "Comida". Si los ítems son bienes de consumo → "Compras".
+
+Reglas generales:
 - Si el texto es ilegible o no corresponde a una factura, devuelve confianza "baja" y null en los campos.
 - Para montos, devuelve solo el número sin símbolos ni puntos de miles (ej: 150000.00).
 - Si hay múltiples montos, usa el total final.
+- Para la categoría, si no puedes determinarlo con certeza, omite el campo (null).
 """
 
 
@@ -41,7 +58,7 @@ async def analyze_invoice_text(ocr_text: str) -> dict:
         }
 
     client = Groq(api_key=os.getenv("GROQ_API_KEY"))
-    
+
     try:
         prompt = EXTRACT_INVOICE_PROMPT.format(text=ocr_text[:4000])
 
