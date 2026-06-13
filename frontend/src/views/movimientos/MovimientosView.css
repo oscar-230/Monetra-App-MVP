@@ -4,6 +4,24 @@
   padding-bottom: 7rem;
 }
 
+/* Header opcional por si vuelven a usarlo */
+.mv-header {
+  background: white;
+  border-bottom: 1px solid #e5e7eb;
+  padding: 1rem 1.5rem;
+  position: sticky;
+  top: 0;
+  z-index: 30;
+}
+
+.mv-header h1 {
+  margin: 0;
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: #1a7a50; /* Verde de Monetra */
+}
+
+/* Sección Buscador y Filtros */
 .mv-search-section {
   background: white;
   padding: 1rem 1.5rem;
@@ -14,11 +32,9 @@
   display: flex;
   align-items: center;
   gap: 0.75rem;
-
   background: #f1f5f9;
   border-radius: 12px;
   padding: 0.75rem 1rem;
-
   margin-bottom: 1rem;
 }
 
@@ -90,8 +106,9 @@
   border-color: #1a7a50;
 }
 
+/* Contenedor Principal */
 .mv-main {
-  max-width: 600px;
+  max-width: 900px; /* Ampliado para mejor visualización en escritorio */
   margin: 0 auto;
   padding: 1.5rem 1rem;
 }
@@ -109,46 +126,36 @@
 }
 
 /* Banner éxito */
-
 .mv-success-banner {
-  max-width: 600px;
+  max-width: 900px;
   margin: 1rem auto 0;
-
   background: #e9f8f0;
   color: #1a7a50;
-
   border: 1px solid #bde7cf;
   border-radius: 12px;
-
   padding: 0.9rem 1rem;
-
   font-size: 0.95rem;
   font-weight: 600;
-
   animation: fadeIn 0.25s ease;
 }
 
-/* Card */
-
+/* Card de Movimiento */
 .movement-card {
   background: white;
-
   border-radius: 16px;
   border: 1px solid #e5e7eb;
-
   padding: 1rem;
   margin-bottom: 0.75rem;
-
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 1rem;
-
-  transition: all 0.2s ease;
+  transition: all 0.25s ease;
 }
 
 .movement-card:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.06);
 }
 
 .movement-icon-wrapper {
@@ -211,76 +218,48 @@
   color: #94a3b8;
 }
 
-.movement-edit-btn {
+/* Botones de acción dentro de la card (Compatibilidad con ambos nombres) */
+.movement-edit-btn, .movement-menu-btn {
   width: 36px;
   height: 36px;
-
   border: none;
   border-radius: 10px;
-
   background: #f1f5f9;
-
   cursor: pointer;
-
   font-size: 0.9rem;
-
   display: flex;
   align-items: center;
   justify-content: center;
-
   transition: 0.2s ease;
 }
 
-.movement-edit-btn:hover {
+.movement-edit-btn:hover, .movement-menu-btn:hover {
   background: #e2e8f0;
 }
 
-.movement-edit-btn:active {
+.movement-edit-btn:active, .movement-menu-btn:active {
   transform: scale(0.95);
 }
 
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(-6px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* Mobile */
-
-@media (max-width: 640px) {
-  .mv-header {
-    padding: 1rem;
-  }
-
-  .mv-header h1 {
-    font-size: 1.3rem;
-  }
-
-  .mv-search-section {
-    padding: 1rem;
-  }
-
-  .movement-card {
-    padding: 0.875rem;
-  }
-
-  .movement-icon {
-    width: 42px;
-    height: 42px;
-    font-size: 1.3rem;
-  }
-
-  .movement-amount {
-    font-size: 0.9rem;
-  }
-
-  .movement-time {
-    font-size: 0.7rem;
-  }
+/* ─── Floating Action Button (FAB) ─── */
+.mv-fab {
+  position: fixed;
+  right: 24px;
+  bottom: 90px;
+  width: 64px;
+  height: 64px;
+  border: none;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #1a7a50, #22a06b);
+  color: white;
+  font-size: 2rem;
+  font-weight: 300;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 10px 25px rgba(26,122,80,.30), 0 4px 12px rgba(0,0,0,.12);
+  transition: transform .2s ease, box-shadow .2s ease;
+  z-index: 50;
 }
