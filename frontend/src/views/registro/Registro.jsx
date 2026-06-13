@@ -53,10 +53,6 @@ const normalizarFecha = (fechaStr) => {
 };
 
 export const Registro = () => {
-  const navigate    = useNavigate();
-  const fileInputRef = useRef(null);
-
-  // ── Campos del formulario ──────────────────────────────────────────
   const navigate         = useNavigate();
   const fileInputRef     = useRef(null);
 

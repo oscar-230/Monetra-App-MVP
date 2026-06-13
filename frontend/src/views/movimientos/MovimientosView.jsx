@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { AppHeader }             from '../../components/layout/AppHeader';
 import { BottomNav }             from '../../components/layout/BottomNav';
 import { MovementCard }          from '../../components/movimientos/MovementCard';
