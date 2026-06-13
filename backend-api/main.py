@@ -27,11 +27,11 @@ app.add_middleware(
 )
 
 app.include_router(ocr_router)
-app.include_router(movements_router, prefix="/movements", tags=["Movements"])
-app.include_router(reports_router, prefix="/reports", tags=["Reports"])
-app.include_router(ai_router, prefix="/ai", tags=["AI"])
-app.include_router(predictions_router, prefix="/predictions", tags=["Predictions"])
-app.include_router(savings_goals_router, prefix="/savings-goals", tags=["Savings Goals"])
+app.include_router(movements_router,   prefix="/api/movements",     tags=["Movements"])
+app.include_router(ai_router,          prefix="/api/ai",            tags=["AI"])
+app.include_router(predictions_router, prefix="/api/predictions",   tags=["Predictions"])
+app.include_router(reports_router,     prefix="/api/reports",       tags=["Reports"])
+app.include_router(savings_goals_router, prefix="/api/savings-goals", tags=["Savings Goals"])
 
 
 @app.get("/health")

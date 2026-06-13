@@ -1,28 +1,81 @@
-// frontend/src/views/dashboard/Registro.jsx
-import { useState } from 'react';
+// frontend/src/views/registro/Registro.jsx
+import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './Registro.css';
 import { BottomNav } from '../../components/layout/BottomNav';
-
+import { scanInvoice } from '../../services/ocrApi';
+import { createMovement } from '../../services/movementApi';
 
 const CATEGORIAS = [
-  { id: 'comida',     label: 'Comida',     emoji: '🍔' },
-  { id: 'transporte', label: 'Transporte', emoji: '🚌' },
-  { id: 'diversion',  label: 'Diversión',  emoji: '🎬' },
-  { id: 'salud',      label: 'Salud',      emoji: '❤️' },
-  { id: 'compras',    label: 'Compras',    emoji: '🛍️' },
-  { id: 'otros',      label: 'Otros',      emoji: '···' },
+  { id: 'Alimentación', label: 'Comida',     emoji: '🍔' },
+  { id: 'Transporte',   label: 'Transporte', emoji: '🚌' },
+  { id: 'Ocio',         label: 'Diversión',  emoji: '🎬' },
+  { id: 'Salud',        label: 'Salud',      emoji: '❤️' },
+  { id: 'Compras',      label: 'Compras',    emoji: '🛍️' },
+  { id: 'Otros',        label: 'Otros',      emoji: '···' },
 ];
 
-export const Registro = () => {
-  const navigate = useNavigate();
-  const [tipoMovimiento, setTipoMovimiento] = useState('gasto');
-  const [monto,       setMonto]     = useState('');
-  const [categoria,   setCategoria] = useState('comida');
-  const [nota,        setNota]      = useState('');
-  const [adjuntarFoto, setAdjuntar] = useState(false);
-  const [error,       setError]     = useState('');
+// Mapea lo que devuelve el backend a nuestras categorías internas
+const mapearCategoria = (categoriaOCR) => {
+  if (!categoriaOCR) return 'Otros';
+  // Normalizar: quitar tildes y pasar a minúsculas para comparar
+  const normalizar = (s) => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  const lower = normalizar(categoriaOCR);
 
+  // Mapeo directo de los valores exactos que devuelve el backend
+  if (lower === 'comida')      return 'Alimentación';
+  if (lower === 'transporte')  return 'Transporte';
+  if (lower === 'diversion')   return 'Ocio';
+  if (lower === 'salud')       return 'Salud';
+  if (lower === 'compras')     return 'Compras';
+
+  // Fallback por palabras clave (por si el modelo responde diferente)
+  if (lower.includes('comida') || lower.includes('restaurante') || lower.includes('aliment') || lower.includes('cafe')) return 'Alimentación';
+  if (lower.includes('transporte') || lower.includes('taxi') || lower.includes('uber') || lower.includes('bus')) return 'Transporte';
+  if (lower.includes('diversion') || lower.includes('ocio') || lower.includes('cine') || lower.includes('entretenimiento')) return 'Ocio';
+  if (lower.includes('salud') || lower.includes('farmacia') || lower.includes('medico')) return 'Salud';
+  if (lower.includes('compra') || lower.includes('supermercado') || lower.includes('tienda') || lower.includes('ropa')) return 'Compras';
+
+  return 'Otros';
+};
+
+// Formatea fecha de OCR (varios formatos posibles) a YYYY-MM-DD
+const normalizarFecha = (fechaStr) => {
+  if (!fechaStr) return new Date().toISOString().slice(0, 10);
+  // Si ya viene en formato YYYY-MM-DD
+  if (/^\d{4}-\d{2}-\d{2}$/.test(fechaStr)) return fechaStr;
+  // Intentar parsear
+  try {
+    const d = new Date(fechaStr);
+    if (!isNaN(d)) return d.toISOString().slice(0, 10);
+  } catch (_) {}
+  return new Date().toISOString().slice(0, 10);
+};
+
+export const Registro = () => {
+  const navigate    = useNavigate();
+  const fileInputRef = useRef(null);
+
+  // ── Campos del formulario ──────────────────────────────────────────
+  const navigate         = useNavigate();
+  const fileInputRef     = useRef(null);
+
+  const [tipoMovimiento, setTipoMovimiento] = useState('gasto');
+  const [monto,          setMonto]          = useState('');
+  const [categoria,      setCategoria]      = useState('Alimentación');
+  const [nota,           setNota]           = useState('');
+  const [adjuntarFoto,   setAdjuntar]       = useState(false);
+  const [fecha,          setFecha]          = useState(new Date().toISOString().slice(0, 10));
+  
+  // ── Estado OCR / UI ────────────────────────────────────────────────
+  const [ocrData,     setOcrData]    = useState(null);
+  const [showPreview, setShowPreview] = useState(false);
+  const [loadingOCR,  setLoadingOCR] = useState(false);
+  const [saving,      setSaving]     = useState(false);
+  const [error,       setError]      = useState('');
+  const [ocrError,    setOcrError]   = useState('');
+
+  // ── Handlers de monto ──────────────────────────────────────────────
   const handleMonto = (e) => {
     const val = e.target.value.replace(/[^0-9.]/g, '');
     if (val.split('.').length > 2) return;
@@ -30,19 +83,100 @@ export const Registro = () => {
     if (error) setError('');
   };
 
-  const handleGuardar = () => {
+  // ── Escanear factura con OCR ───────────────────────────────────────
+  const handleFileSelect = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    // Resetear input para permitir re-selección del mismo archivo
+    e.target.value = '';
+
+    setOcrError('');
+    setLoadingOCR(true);
+
+    try {
+      const result = await scanInvoice(file);
+
+      if (!result.success || !result.data) {
+        setOcrError(result.message || 'No se pudo extraer información del documento.');
+        setLoadingOCR(false);
+        return;
+      }
+
+      setOcrData(result.data);
+      setShowPreview(true);
+    } catch (err) {
+      setOcrError(err.message || 'Error al procesar la imagen.');
+    } finally {
+      setLoadingOCR(false);
+    }
+  };
+
+  // ── Aceptar datos del OCR y pre-llenar formulario ──────────────────
+  const handleAcceptOCR = () => {
+    if (!ocrData) return;
+
+    // Monto
+    if (ocrData.monto_total && ocrData.monto_total > 0) {
+      setMonto(String(ocrData.monto_total));
+    }
+
+    // Categoría — usar el campo categoria que devuelve el backend directamente
+    const catFuente = ocrData.categoria || ocrData.descripcion;
+    setCategoria(mapearCategoria(catFuente));
+
+    // Fecha
+    if (ocrData.fecha) {
+      setFecha(normalizarFecha(ocrData.fecha));
+    }
+
+    // Nota: nombre del proveedor
+    if (ocrData.proveedor) {
+      setNota(ocrData.proveedor);
+    }
+
+    setShowPreview(false);
+  };
+
+  // ── Cerrar modal OCR sin aceptar ───────────────────────────────────
+  const handleClosePreview = () => {
+    setShowPreview(false);
+    setOcrData(null);
+  };
+
+  // ── Guardar gasto en backend → Firestore ───────────────────────────
+  const handleGuardar = async () => {
     const num = parseFloat(monto);
     if (!monto || isNaN(num) || num <= 0) {
       setError('Ingresa un monto válido para continuar.');
       return;
     }
-    // Aquí conectarías con Firestore
-    console.log('Movimiento guardado:', { tipoMovimiento, monto: num, categoria, nota, adjuntarFoto });
-    navigate('/dashboard');
+
+    setSaving(true);
+    setError('');
+
+    try {
+      await createMovement({
+        tipo:        'gasto',           // siempre gasto → aparece negativo en UI
+        monto:       num,
+        categoria:   categoria,
+        fecha:       fecha,
+        descripcion: nota || categoria,
+        moneda:      'COP',
+        origen:      'ocr',
+      });
+
+      navigate('/movimientos');
+    } catch (err) {
+      setError(err.message || 'No fue posible guardar el gasto. Intenta de nuevo.');
+    } finally {
+      setSaving(false);
+    }
   };
 
+  // ── Render ─────────────────────────────────────────────────────────
   return (
     <div className="rg-wrapper">
+
       {/* Header */}
       <header className="rg-header">
         <button className="rg-back" onClick={() => navigate('/dashboard')}>
@@ -60,6 +194,7 @@ export const Registro = () => {
       </header>
 
       <main className="rg-main">
+
         {/* Título */}
         <div className="rg-title-block">
           <h1 className="rg-title">
@@ -72,7 +207,7 @@ export const Registro = () => {
           </p>
         </div>
 
-        {/* Monto */}
+        {/* ── Monto ─────────────────────────────────────────────────── */}
         <div className="rg-amount-card">
           <p className="rg-amount-label">
             Monto del {tipoMovimiento}
@@ -89,15 +224,55 @@ export const Registro = () => {
               aria-label="Monto del gasto"
             />
           </div>
-          
+
           {error && <p className="rg-error">{error}</p>}
-          <button className="rg-scan-btn">
-            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round"
-                d="M9 3H5a2 2 0 00-2 2v4m0 6v4a2 2 0 002 2h4m6-18h4a2 2 0 012 2v4m0 6v4a2 2 0 01-2 2h-4" />
-            </svg>
-            Escanear factura (OCR)
+
+          {/* Fecha */}
+          <div style={{ width: '100%', marginTop: '0.25rem' }}>
+            <p className="rg-amount-label" style={{ marginBottom: '0.25rem' }}>Fecha</p>
+            <input
+              type="date"
+              value={fecha}
+              onChange={(e) => setFecha(e.target.value)}
+              className="rg-note-input"
+              style={{ fontSize: '0.9rem' }}
+            />
+          </div>
+
+          {/* Botón escanear */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            style={{ display: 'none' }}
+            onChange={handleFileSelect}
+          />
+          <button
+            className="rg-scan-btn"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={loadingOCR}
+          >
+            {loadingOCR ? (
+              <>
+                <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} style={{ animation: 'spin 1s linear infinite' }}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h5M20 20v-5h-5M4 9a9 9 0 0114.6-3.6M20 15a9 9 0 01-14.6 3.6" />
+                </svg>
+                Procesando...
+              </>
+            ) : (
+              <>
+                <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round"
+                    d="M9 3H5a2 2 0 00-2 2v4m0 6v4a2 2 0 002 2h4m6-18h4a2 2 0 012 2v4m0 6v4a2 2 0 01-2 2h-4" />
+                </svg>
+                Escanear factura (OCR)
+              </>
+            )}
           </button>
+
+          {ocrError && (
+            <p className="rg-error" style={{ textAlign: 'center' }}>{ocrError}</p>
+          )}
         </div>
         {/* Tipo de movimiento */}
         <div className="rg-section">
@@ -122,11 +297,10 @@ export const Registro = () => {
           </select>
         </div>
 
-        {/* Categorías */}
+        {/* ── Categorías ──────────────────────────────────────────── */}
         <div className="rg-section">
           <div className="rg-section-row">
             <span className="rg-section-label">Categoría</span>
-            <button className="rg-link-btn">Ver todas</button>
           </div>
           <div className="rg-cat-grid">
             {CATEGORIAS.map((cat) => (
@@ -142,20 +316,20 @@ export const Registro = () => {
           </div>
         </div>
 
-        {/* Nota */}
+        {/* ── Nota (proveedor precargado por OCR) ─────────────────── */}
         <div className="rg-section">
           <span className="rg-section-label">Nota (opcional)</span>
           <input
             className="rg-note-input"
             type="text"
-            placeholder="¿En qué gastaste esto?"
+            placeholder="¿En qué gastaste esto? (ej: Carulla)"
             value={nota}
             onChange={(e) => setNota(e.target.value)}
             aria-label="Nota opcional"
           />
         </div>
 
-        {/* Adjuntar foto */}
+        {/* ── Toggle foto ──────────────────────────────────────────── */}
         <div className="rg-toggle-row">
           <span className="rg-toggle-label">
             <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
@@ -174,13 +348,96 @@ export const Registro = () => {
           />
         </div>
 
-        {/* Guardar */}
-        <button className="rg-save-btn" onClick={handleGuardar}>
-          Guardar {tipoMovimiento}
+        {/* ── Guardar ─────────────────────────────────────────────── */}
+        <button
+          className="rg-save-btn"
+          onClick={handleGuardar}
+          disabled={saving}
+        >
+          {saving ? 'Guardando...' : `Guardar ${tipoMovimiento}`}
         </button>
+
       </main>
 
+      {/* ── Modal preview OCR ────────────────────────────────────────── */}
+      {showPreview && ocrData && (
+        <div className="ocr-overlay" onClick={handleClosePreview}>
+          <div className="ocr-modal" onClick={(e) => e.stopPropagation()}>
+
+            {/* Cabecera */}
+            <div className="ocr-modal-header">
+              <div className="ocr-scanning-indicator">
+                <div className="ocr-scan-dot" />
+                <span>Extrayendo datos...</span>
+              </div>
+              <button className="ocr-close-btn" onClick={handleClosePreview}>×</button>
+            </div>
+
+            {/* Cuerpo de datos */}
+            <div className="ocr-modal-body">
+
+              <div className="ocr-field-row">
+                <div className="ocr-field">
+                  <span className="ocr-field-label">COMERCIO</span>
+                  <span className="ocr-field-value">{ocrData.proveedor || '—'}</span>
+                </div>
+                <div className="ocr-field">
+                  <span className="ocr-field-label">FECHA</span>
+                  <span className="ocr-field-value">
+                    {ocrData.fecha ? normalizarFecha(ocrData.fecha).split('-').reverse().join('/') : '—'}
+                  </span>
+                </div>
+              </div>
+
+              <div className="ocr-field-row">
+                <div className="ocr-field">
+                  <span className="ocr-field-label">CATEGORÍA</span>
+                  <span className="ocr-field-value ocr-category-pill">
+                    {CATEGORIAS.find(c => c.id === mapearCategoria(ocrData.categoria || ocrData.descripcion))?.emoji || '···'}{' '}
+                    {CATEGORIAS.find(c => c.id === mapearCategoria(ocrData.categoria || ocrData.descripcion))?.label || 'Otros'}
+                  </span>
+                </div>
+                <div className="ocr-field">
+                  <span className="ocr-field-label">TOTAL</span>
+                  <span className="ocr-field-value ocr-amount">
+                    {ocrData.monto_total
+                      ? Number(ocrData.monto_total).toLocaleString('es-CO')
+                      : '—'}
+                  </span>
+                </div>
+              </div>
+
+              {ocrData.notas && (
+                <div className="ocr-field" style={{ marginTop: '0.5rem' }}>
+                  <span className="ocr-field-label">NOTAS OCR</span>
+                  <span className="ocr-field-value" style={{ fontSize: '0.8rem', color: '#6b7280' }}>
+                    {ocrData.notas}
+                  </span>
+                </div>
+              )}
+
+              {/* Confianza */}
+              <div className="ocr-confidence">
+                <span className={`ocr-confidence-badge ocr-confidence-${ocrData.confianza || 'baja'}`}>
+                  Confianza: {ocrData.confianza || 'baja'}
+                </span>
+              </div>
+            </div>
+
+            {/* Acción */}
+            <button className="ocr-accept-btn" onClick={handleAcceptOCR}>
+              <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+              </svg>
+              Aceptar gasto
+            </button>
+
+          </div>
+        </div>
+      )}
+
       <BottomNav />
+
     </div>
   );
 };
