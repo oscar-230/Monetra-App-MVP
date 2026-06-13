@@ -51,11 +51,7 @@ Reglas generales:
 
 async def analyze_invoice_text(ocr_text: str) -> dict:
     if not ocr_text or not ocr_text.strip():
-        return {
-            "success": False,
-            "data": None,
-            "error": "No hay texto para analizar"
-        }
+        return {"success": False, "data": None, "error": "No hay texto para analizar"}
 
     client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
@@ -84,11 +80,7 @@ async def analyze_invoice_text(ocr_text: str) -> dict:
         return {"success": True, "data": invoice_data, "error": None}
 
     except json.JSONDecodeError:
-        return {
-            "success": False,
-            "data": None,
-            "error": "No se pudo interpretar la respuesta del análisis"
-        }
+        return {"success": False, "data": None, "error": "No se pudo interpretar la respuesta del análisis"}
     except Exception as e:
         return {
             "success": False,

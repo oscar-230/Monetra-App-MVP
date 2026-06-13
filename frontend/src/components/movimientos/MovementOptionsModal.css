@@ -162,3 +162,105 @@
 .delete-btn:hover {
   background: #ffe5e5;
 }
+
+/* Confirmación eliminar */
+
+.confirm-overlay {
+  position: fixed;
+  inset: 0;
+
+  background: rgba(0,0,0,.45);
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  z-index: 3000;
+}
+
+.confirm-modal {
+  width: 360px;
+  max-width: 90%;
+
+  background: white;
+
+  border-radius: 20px;
+
+  padding: 1.5rem;
+
+  text-align: center;
+
+  animation: popIn .2s ease;
+}
+
+.confirm-icon {
+  font-size: 3rem;
+  margin-bottom: .5rem;
+}
+
+.confirm-modal h3 {
+  margin: 0;
+  color: #111827;
+}
+
+.confirm-modal p {
+  color: #6b7280;
+  margin-top: .5rem;
+}
+
+.confirm-actions {
+  display: flex;
+  gap: .75rem;
+  margin-top: 1.5rem;
+}
+
+.confirm-actions button {
+  flex: 1;
+}
+
+.cancel-confirm-btn {
+  border: none;
+  background: #f3f4f6;
+
+  color: #374151;
+
+  padding: .85rem;
+
+  border-radius: 12px;
+
+  cursor: pointer;
+
+  font-weight: 600;
+}
+
+.delete-confirm-btn {
+  border: none;
+
+  background: #dc2626;
+
+  color: white;
+
+  padding: .85rem;
+
+  border-radius: 12px;
+
+  cursor: pointer;
+
+  font-weight: 600;
+}
+
+.delete-confirm-btn:hover {
+  background: #b91c1c;
+}
+
+@keyframes popIn {
+  from {
+    opacity: 0;
+    transform: scale(.9);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}

@@ -41,6 +41,8 @@ export const MovimientosView = () => {
   const [selectedMovement, setSelectedMovement] = useState(null);
   const [successMessage,   setSuccessMessage]   = useState('');
   const [actionError,      setActionError]      = useState('');
+  
+  const navigate = useNavigate();
 
   // ── Enriquecer con datos visuales ──────────────────────────────────────
   const enrichedMovimientos = useMemo(
@@ -289,7 +291,14 @@ export const MovimientosView = () => {
         />
       )}
 
-      <BottomNav />
+      {/* Botón flotante para registrar nuevo movimiento traído del segundo archivo */}
+      <button
+        className="mv-fab"
+        onClick={() => navigate('/registro')}
+        aria-label="Nuevo movimiento"
+      >
+        +
+      </button>
 
       <style>{`
         @keyframes spin {
@@ -297,6 +306,7 @@ export const MovimientosView = () => {
           to   { transform: rotate(360deg); }
         }
       `}</style>
+      <BottomNav />
     </div>
   );
 };

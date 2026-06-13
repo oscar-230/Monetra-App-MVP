@@ -57,12 +57,16 @@ export const Registro = () => {
   const fileInputRef = useRef(null);
 
   // ── Campos del formulario ──────────────────────────────────────────
-  const [monto,        setMonto]      = useState('');
-  const [categoria,    setCategoria]  = useState('Alimentación');
-  const [nota,         setNota]       = useState('');
-  const [adjuntarFoto, setAdjuntar]   = useState(false);
-  const [fecha,        setFecha]      = useState(new Date().toISOString().slice(0, 10));
+  const navigate         = useNavigate();
+  const fileInputRef     = useRef(null);
 
+  const [tipoMovimiento, setTipoMovimiento] = useState('gasto');
+  const [monto,          setMonto]          = useState('');
+  const [categoria,      setCategoria]      = useState('Alimentación');
+  const [nota,           setNota]           = useState('');
+  const [adjuntarFoto,   setAdjuntar]       = useState(false);
+  const [fecha,          setFecha]          = useState(new Date().toISOString().slice(0, 10));
+  
   // ── Estado OCR / UI ────────────────────────────────────────────────
   const [ocrData,     setOcrData]    = useState(null);
   const [showPreview, setShowPreview] = useState(false);
@@ -193,15 +197,21 @@ export const Registro = () => {
 
         {/* Título */}
         <div className="rg-title-block">
-          <h1 className="rg-title">Nuevo gasto</h1>
+          <h1 className="rg-title">
+            Nuevo {tipoMovimiento}
+          </h1>
           <p className="rg-subtitle">
-            Registra tus gastos rápidamente para mantener tu salud financiera.
+            {tipoMovimiento === 'gasto'
+              ? 'Registra tus gastos rápidamente para mantener tu salud financiera.'
+              : 'Registra tus ingresos para llevar el control de tu dinero.'}
           </p>
         </div>
 
         {/* ── Monto ─────────────────────────────────────────────────── */}
         <div className="rg-amount-card">
-          <p className="rg-amount-label">Monto del gasto</p>
+          <p className="rg-amount-label">
+            Monto del {tipoMovimiento}
+          </p>
           <div className="rg-amount-row">
             <span className="rg-dollar">$</span>
             <input
@@ -264,6 +274,28 @@ export const Registro = () => {
             <p className="rg-error" style={{ textAlign: 'center' }}>{ocrError}</p>
           )}
         </div>
+        {/* Tipo de movimiento */}
+        <div className="rg-section">
+          <span className="rg-section-label">
+            Tipo de movimiento
+          </span>
+
+          <select
+            className="rg-type-select"
+            value={tipoMovimiento}
+            onChange={(e) =>
+              setTipoMovimiento(e.target.value)
+            }
+          >
+            <option value="gasto">
+              💸 Gasto
+            </option>
+
+            <option value="ingreso">
+              💰 Ingreso
+            </option>
+          </select>
+        </div>
 
         {/* ── Categorías ──────────────────────────────────────────── */}
         <div className="rg-section">
@@ -322,7 +354,7 @@ export const Registro = () => {
           onClick={handleGuardar}
           disabled={saving}
         >
-          {saving ? 'Guardando...' : 'Guardar gasto'}
+          {saving ? 'Guardando...' : `Guardar ${tipoMovimiento}`}
         </button>
 
       </main>

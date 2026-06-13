@@ -5,15 +5,15 @@ import os
 
 load_dotenv()
 
-from routers.ocr_router        import router as ocr_router
-from routers.movements_router  import router as movements_router
-from routers.ai_router         import router as ai_router
+from routers.ocr_router import router as ocr_router
+from routers.movements_router import router as movements_router
+from routers.reports_router import router as reports_router
+from routers.ai_router import router as ai_router
 from routers.predictions_router import router as predictions_router
-from routers.reports_router    import router as reports_router
 from routers.savings_goals_router import router as savings_goals_router
 
 app = FastAPI(
-    title="FinApp Backend API",
+    title="Monetra App API",
     description="API para gestión de gastos con OCR e IA",
     version="1.0.0",
 )
