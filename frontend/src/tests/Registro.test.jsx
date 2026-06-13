@@ -1,12 +1,4 @@
 // src/test/Registro.test.jsx
-// Pruebas del formulario de registro de gastos:
-// - Renderiza todos los elementos del formulario
-// - Validación: bloquea guardar con monto vacío o inválido
-// - Validación: acepta montos decimales correctos
-// - Selección de categoría cambia el estado activo
-// - Toggle de "adjuntar foto" cambia de estado
-// - Flujo feliz: monto válido navega al dashboard
-// - El botón "Monetra" regresa al dashboard
 
 import { describe, it, expect, vi } from 'vitest';
 import { screen, fireEvent, waitFor } from '@testing-library/react';
@@ -18,6 +10,10 @@ vi.mock('react-router-dom', async (importOriginal) => {
   const real = await importOriginal();
   return { ...real, useNavigate: () => mockNavigate };
 });
+
+vi.mock('../services/movementApi', () => ({
+  createMovement: vi.fn().mockResolvedValue({}),
+}));
 
 const renderRegistro = () =>
   renderWithProviders(<Registro />);
@@ -74,8 +70,6 @@ describe('Registro — validación del monto', () => {
 
   it('muestra error si el monto es negativo', () => {
     renderRegistro();
-    // El handler filtra no-numéricos, -5 queda como '5' → pero probamos con ''
-    // para verificar la guarda principal
     fireEvent.change(screen.getByPlaceholderText('0.00'), { target: { value: '' } });
     fireEvent.click(screen.getByRole('button', { name: /guardar gasto/i }));
     expect(screen.getByText(/ingresa un monto válido/i)).toBeInTheDocument();
@@ -98,9 +92,7 @@ describe('Registro — validación del monto', () => {
   it('no permite más de un punto decimal', () => {
     renderRegistro();
     const input = screen.getByPlaceholderText('0.00');
-    // Primer cambio válido
     fireEvent.change(input, { target: { value: '3.5' } });
-    // Segundo cambio con dos puntos — el handler lo rechaza
     fireEvent.change(input, { target: { value: '3.2.5' } });
     expect((input.value.match(/\./g) || []).length).toBeLessThanOrEqual(1);
   });
@@ -108,13 +100,13 @@ describe('Registro — validación del monto', () => {
 
 // ─────────────────────────────────────────────────────────────────────────
 describe('Registro — flujo feliz', () => {
-  it('navega a /dashboard con un monto válido', async () => {
+  it('navega a /movimientos con un monto válido', async () => {
     mockNavigate.mockClear();
     renderRegistro();
     fireEvent.change(screen.getByPlaceholderText('0.00'), { target: { value: '15000' } });
     fireEvent.click(screen.getByRole('button', { name: /guardar gasto/i }));
     await waitFor(() => {
-      expect(mockNavigate).toHaveBeenCalledWith('/dashboard');
+      expect(mockNavigate).toHaveBeenCalledWith('/movimientos');
     });
   });
 
