@@ -1,12 +1,9 @@
 import os
-from google import genai
-from google.genai import types
+from groq import Groq
 import json
 import re
 
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-
-client = genai.Client(api_key=GEMINI_API_KEY)
+client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
 EXTRACT_INVOICE_PROMPT = """
 Eres un asistente especializado en análisis de facturas y comprobantes de pago.
@@ -38,16 +35,6 @@ Reglas:
 
 
 async def analyze_invoice_text(ocr_text: str) -> dict:
-    """
-    Usa Gemini para estructurar los datos extraídos del OCR.
-
-    Retorna:
-        {
-            "success": bool,
-            "data": dict | None,   # campos estructurados de la factura
-            "error": str | None
-        }
-    """
     if not ocr_text or not ocr_text.strip():
         return {
             "success": False,
@@ -56,20 +43,22 @@ async def analyze_invoice_text(ocr_text: str) -> dict:
         }
 
     try:
-        prompt = EXTRACT_INVOICE_PROMPT.format(text=ocr_text[:4000])  # Limitar tokens
+        prompt = EXTRACT_INVOICE_PROMPT.format(text=ocr_text[:4000])
 
-        response = client.models.generate_content(
-            model="gemini-2.0-flash",
-            contents=prompt,
-            config=types.GenerateContentConfig(
-                temperature=0.1,   # Bajo para respuestas consistentes/deterministas
-                max_output_tokens=512,
-            ),
+        response = client.chat.completions.create(
+            model="llama-3.1-8b-instant",
+            messages=[
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ],
+            temperature=0.1,
+            max_tokens=512,
         )
 
-        raw_text = response.text.strip()
+        raw_text = response.choices[0].message.content.strip()
 
-        # Limpiar posibles markdown fences que Gemini a veces añade
         raw_text = re.sub(r"^```(?:json)?\s*", "", raw_text)
         raw_text = re.sub(r"\s*```$", "", raw_text)
 
