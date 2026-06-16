@@ -55,3 +55,65 @@ class FinancialAIResponse(BaseModel):
     advertencias: List[str] = []
     tiempoRespuestaMs: int = 0
     generadoEn: str
+
+
+class RecomendacionItem(BaseModel):
+    tipo: Literal[
+        "ahorro",
+        "control_gastos",
+        "deudas",
+        "flujo_neto",
+        "habitos",
+        "general"
+    ]
+    prioridad: Literal["alta", "media", "baja"]
+    titulo: str
+    descripcion: str
+    accionSugerida: str
+    motivo: str
+    beneficioEsperado: str
+    metricaRelacionada: Optional[Dict[str, Any]] = None
+    etiquetas: List[str] = []
+
+
+class RecomendacionesResponse(BaseModel):
+    resumenGeneral: str
+    recomendaciones: List[RecomendacionItem]
+    mensajeFinal: str
+    fuente: str = "llm"
+    errorOriginal: Optional[str] = None
+
+
+class AnalisisResponse(BaseModel):
+    resumenEjecutivo: str
+    patronesDetectados: List[Dict[str, Any]]
+    conclusiones: List[str]
+    oportunidadesMejora: List[str]
+    advertencias: List[str] = []
+    mensajeFinal: str
+    fuente: str = "llm"
+    errorOriginal: Optional[str] = None
+
+
+class PrediccionItem(BaseModel):
+    periodo: str
+    gastoEstimado: float
+    rangoMinimo: float
+    rangoMaximo: float
+    interpretacion: str
+    nivelConfianza: Literal["alta", "media", "baja"]
+    categoriaPrincipalEsperada: str = "Sin datos"
+    advertencia: Optional[str] = None
+
+
+class PrediccionesResponse(BaseModel):
+    resumenPredictivo: str
+    horizonteAnalizado: str
+    predicciones: List[PrediccionItem]
+    escenarios: Dict[str, str]
+    conclusiones: List[str]
+    accionesSugeridas: List[str]
+    advertencias: List[str] = []
+    mensajeFinal: str
+    fuente: str = "llm"
+    errorOriginal: Optional[str] = None
