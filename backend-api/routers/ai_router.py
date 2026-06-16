@@ -21,25 +21,28 @@ router = APIRouter()
 
 
 @router.post("/analysis")
-async def financial_analysis(request: FinancialAIRequest):
+async def financial_analysis(request: Request, body: FinancialAIRequest):
+    get_authenticated_uid(request)  # Valida que el usuario esté autenticado
     try:
-        return await generate_financial_analysis(request)
+        return await generate_financial_analysis(body)
     except Exception as error:
         raise HTTPException(status_code=500, detail=str(error)) from error
 
 
 @router.post("/recommendations")
-async def financial_recommendations(request: FinancialAIRequest):
+async def financial_recommendations(request: Request, body: FinancialAIRequest):
+    get_authenticated_uid(request)
     try:
-        return await generate_recommendations(request)
+        return await generate_recommendations(body)
     except Exception as error:
         raise HTTPException(status_code=500, detail=str(error)) from error
 
 
 @router.post("/predictions")
-async def financial_predictions(request: FinancialAIRequest):
+async def financial_predictions(request: Request, body: FinancialAIRequest):
+    get_authenticated_uid(request)
     try:
-        return await generate_predictions(request)
+        return await generate_predictions(body)
     except Exception as error:
         raise HTTPException(status_code=500, detail=str(error)) from error
     
