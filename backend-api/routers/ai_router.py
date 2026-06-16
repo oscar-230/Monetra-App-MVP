@@ -16,6 +16,7 @@ from services.recommendations_storage_service import (
      save_recommendation,
  )
 
+from services.ai_monitoring_service import register_ai_request
 
 router = APIRouter()
 
