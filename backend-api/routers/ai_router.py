@@ -16,33 +16,64 @@ from services.recommendations_storage_service import (
      save_recommendation,
  )
 
+from services.ai_monitoring_service import register_ai_request
 
 router = APIRouter()
 
 
 @router.post("/analysis")
 async def financial_analysis(request: Request, body: FinancialAIRequest):
-    get_authenticated_uid(request)  # Valida que el usuario esté autenticado
+    uid = get_authenticated_uid(request)
     try:
-        return await generate_financial_analysis(body)
+        result = await generate_financial_analysis(body)
+        register_ai_request(
+            uid=uid,
+            tipo="analysis",
+            modelo=result.get("modelo", "desconocido"),
+            generado_por_llm=result.get("generadoPorLLM", False),
+            tiempo_respuesta_ms=result.get("tiempoRespuestaMs", 0),
+            estado=result.get("estado", "desconocido"),
+            advertencias=result.get("advertencias", []),
+        )
+        return result
     except Exception as error:
         raise HTTPException(status_code=500, detail=str(error)) from error
-
+    
 
 @router.post("/recommendations")
 async def financial_recommendations(request: Request, body: FinancialAIRequest):
-    get_authenticated_uid(request)
+    uid = get_authenticated_uid(request)
     try:
-        return await generate_recommendations(body)
+        result = await generate_recommendations(body)
+        register_ai_request(
+            uid=uid,
+            tipo="recommendations",
+            modelo=result.get("modelo", "desconocido"),
+            generado_por_llm=result.get("generadoPorLLM", False),
+            tiempo_respuesta_ms=result.get("tiempoRespuestaMs", 0),
+            estado=result.get("estado", "desconocido"),
+            advertencias=result.get("advertencias", []),
+        )
+        return result
     except Exception as error:
         raise HTTPException(status_code=500, detail=str(error)) from error
 
 
 @router.post("/predictions")
 async def financial_predictions(request: Request, body: FinancialAIRequest):
-    get_authenticated_uid(request)
+    uid = get_authenticated_uid(request)
     try:
-        return await generate_predictions(body)
+        result = await generate_predictions(body)
+        register_ai_request(
+            uid=uid,
+            tipo="predictions",
+            modelo=result.get("modelo", "desconocido"),
+            generado_por_llm=result.get("generadoPorLLM", False),
+            tiempo_respuesta_ms=result.get("tiempoRespuestaMs", 0),
+            estado=result.get("estado", "desconocido"),
+            advertencias=result.get("advertencias", []),
+        )
+        return result
     except Exception as error:
         raise HTTPException(status_code=500, detail=str(error)) from error
     
