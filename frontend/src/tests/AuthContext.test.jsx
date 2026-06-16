@@ -1,6 +1,6 @@
 // src/test/AuthContext.test.jsx
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, act } from '@testing-library/react'; // 👈 Importamos act
 import { MemoryRouter } from 'react-router-dom';
 import {
   onAuthStateChanged,
@@ -82,7 +82,6 @@ describe('AuthContext — loginConCorreo', () => {
     const fakeUser = { uid: 'uid-2', email: 'a@b.com' };
     signInWithEmailAndPassword.mockResolvedValueOnce({ user: fakeUser });
 
-    // ✅ FIX: usamos un componente con botón en lugar de act() en render
     const Trigger = () => {
       const { loginConCorreo } = useAuth();
       return (
@@ -93,7 +92,11 @@ describe('AuthContext — loginConCorreo', () => {
     };
 
     const { getByRole } = renderProvider(<Trigger />);
-    getByRole('button', { name: 'login' }).click();
+    
+    // ✅ CORRECCIÓN: Envolvemos el click asíncrono en un bloque act(...)
+    await act(async () => {
+      getByRole('button', { name: 'login' }).click();
+    });
 
     await waitFor(() => {
       expect(signInWithEmailAndPassword).toHaveBeenCalledWith(
@@ -118,7 +121,11 @@ describe('AuthContext — loginConCorreo', () => {
     };
 
     const { getByRole } = renderProvider(<Trigger />);
-    getByRole('button', { name: 'login' }).click();
+    
+    // ✅ CORRECCIÓN: Envolvemos en act(...) para procesar el estado que genera el catch
+    await act(async () => {
+      getByRole('button', { name: 'login' }).click();
+    });
 
     await waitFor(() => {
       expect(caughtError).toBe('auth/wrong-password');
@@ -148,7 +155,11 @@ describe('AuthContext — registroConCorreo', () => {
     };
 
     const { getByRole } = renderProvider(<Trigger />);
-    getByRole('button', { name: 'registro' }).click();
+    
+    // ✅ CORRECCIÓN: Envolvemos el click en act(...)
+    await act(async () => {
+      getByRole('button', { name: 'registro' }).click();
+    });
 
     await waitFor(() => {
       expect(createUserWithEmailAndPassword).toHaveBeenCalledWith(
@@ -178,7 +189,11 @@ describe('AuthContext — recuperarContrasena', () => {
     };
 
     const { getByRole } = renderProvider(<Trigger />);
-    getByRole('button', { name: 'reset' }).click();
+    
+    // ✅ CORRECCIÓN: Envolvemos el click en act(...)
+    await act(async () => {
+      getByRole('button', { name: 'reset' }).click();
+    });
 
     await waitFor(() => {
       expect(sendPasswordResetEmail).toHaveBeenCalledWith(
@@ -203,7 +218,11 @@ describe('AuthContext — cerrarSesion', () => {
     };
 
     const { getByRole } = renderProvider(<Trigger />);
-    getByRole('button', { name: 'salir' }).click();
+    
+    // ✅ CORRECCIÓN: Envolvemos el click en act(...)
+    await act(async () => {
+      getByRole('button', { name: 'salir' }).click();
+    });
 
     await waitFor(() => {
       expect(signOut).toHaveBeenCalledTimes(1);
