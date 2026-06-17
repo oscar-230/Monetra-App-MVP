@@ -72,7 +72,6 @@ export const Registro = () => {
   const [monto,          setMonto]          = useState('');
   const [categoria,      setCategoria]      = useState(categoriaPorDefecto('gasto'));
   const [nota,           setNota]           = useState('');
-  const [adjuntarFoto,   setAdjuntar]       = useState(false);
   const [fecha,          setFecha]          = useState(new Date().toISOString().slice(0, 10));
 
   // ── Estado OCR / UI ────────────────────────────────────────────────
@@ -301,23 +300,25 @@ export const Registro = () => {
 
         {/* Tipo de movimiento */}
         <div className="rg-section">
-          <span className="rg-section-label">
-            Tipo de movimiento
-          </span>
-
-          <select
-            className="rg-type-select"
-            value={tipoMovimiento}
-            onChange={handleTipoChange}
-          >
-            <option value="gasto">
-              💸 Gasto
-            </option>
-
-            <option value="ingreso">
-              💰 Ingreso
-            </option>
-          </select>
+          <span className="rg-section-label">Tipo de movimiento</span>
+          <div className="rg-type-toggle">
+            <button
+              className={`rg-type-btn${tipoMovimiento === 'gasto' ? ' rg-type-btn--active rg-type-btn--gasto' : ''}`}
+              onClick={() => { setTipoMovimiento('gasto'); setCategoria(categoriaPorDefecto('gasto')); }}
+              type="button"
+            >
+              <span className="rg-type-btn-emoji">💸</span>
+              <span className="rg-type-btn-label">Gasto</span>
+            </button>
+            <button
+              className={`rg-type-btn${tipoMovimiento === 'ingreso' ? ' rg-type-btn--active rg-type-btn--ingreso' : ''}`}
+              onClick={() => { setTipoMovimiento('ingreso'); setCategoria(categoriaPorDefecto('ingreso')); }}
+              type="button"
+            >
+              <span className="rg-type-btn-emoji">💰</span>
+              <span className="rg-type-btn-label">Ingreso</span>
+            </button>
+          </div>
         </div>
 
         {/* ── Categorías ──────────────────────────────────────────── */}
@@ -353,25 +354,6 @@ export const Registro = () => {
             value={nota}
             onChange={(e) => setNota(e.target.value)}
             aria-label="Nota opcional"
-          />
-        </div>
-
-        {/* ── Toggle foto ──────────────────────────────────────────── */}
-        <div className="rg-toggle-row">
-          <span className="rg-toggle-label">
-            <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
-              <path strokeLinecap="round" strokeLinejoin="round"
-                d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-            Adjuntar foto
-          </span>
-          <button
-            className={`rg-toggle${adjuntarFoto ? ' rg-toggle--on' : ''}`}
-            onClick={() => setAdjuntar(!adjuntarFoto)}
-            role="switch"
-            aria-checked={adjuntarFoto}
-            aria-label="Adjuntar foto"
           />
         </div>
 
