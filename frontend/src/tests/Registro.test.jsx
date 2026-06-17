@@ -30,14 +30,14 @@ describe('Registro — renderizado', () => {
     expect(screen.getByPlaceholderText('0.00')).toBeInTheDocument();
   });
 
-  it('muestra las 6 categorías', () => {
+  it('muestra las 6 categorías de gasto por defecto', () => {
     renderRegistro();
     expect(screen.getByText('Comida')).toBeInTheDocument();
     expect(screen.getByText('Transporte')).toBeInTheDocument();
     expect(screen.getByText('Diversión')).toBeInTheDocument();
     expect(screen.getByText('Salud')).toBeInTheDocument();
     expect(screen.getByText('Compras')).toBeInTheDocument();
-    expect(screen.getByText('Otros')).toBeInTheDocument();
+    expect(screen.getAllByText('Otros').length).toBeGreaterThan(0);
   });
 
   it('muestra el botón "Guardar gasto"', () => {
@@ -47,9 +47,10 @@ describe('Registro — renderizado', () => {
     ).toBeInTheDocument();
   });
 
-  it('muestra el toggle "Adjuntar foto"', () => {
+  it('muestra los botones de tipo de movimiento', () => {
     renderRegistro();
-    expect(screen.getByRole('switch', { name: /adjuntar foto/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /gasto/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /ingreso/i })).toBeInTheDocument();
   });
 });
 
@@ -144,26 +145,33 @@ describe('Registro — selección de categoría', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────
-describe('Registro — toggle de foto', () => {
-  it('empieza en estado apagado (aria-checked="false")', () => {
+describe('Registro — selector de tipo de movimiento', () => {
+  it('el botón "Gasto" está activo por defecto', () => {
     renderRegistro();
-    expect(screen.getByRole('switch', { name: /adjuntar foto/i }))
-      .toHaveAttribute('aria-checked', 'false');
+    const gastoBtn = screen.getByRole('button', { name: /💸.*gasto|gasto/i });
+    expect(gastoBtn.className).toContain('rg-type-btn--active');
   });
 
-  it('se activa al hacer clic', () => {
+  it('cambia a ingreso al hacer clic en el botón "Ingreso"', async () => {
     renderRegistro();
-    fireEvent.click(screen.getByRole('switch', { name: /adjuntar foto/i }));
-    expect(screen.getByRole('switch', { name: /adjuntar foto/i }))
-      .toHaveAttribute('aria-checked', 'true');
+    // Buscar el botón de ingreso dentro del toggle (no el de categoría)
+    const botonesIngreso = screen.getAllByRole('button', { name: /ingreso/i });
+    // El botón del tipo-toggle tiene clase rg-type-btn
+    const toggleIngreso = botonesIngreso.find(b => b.className.includes('rg-type-btn'));
+    fireEvent.click(toggleIngreso);
+    await waitFor(() => {
+      expect(screen.getByText('Nuevo ingreso')).toBeInTheDocument();
+    });
   });
 
-  it('vuelve a apagarse al hacer clic de nuevo', () => {
+  it('muestra categorías de ingreso al seleccionar ese tipo', async () => {
     renderRegistro();
-    const toggle = screen.getByRole('switch', { name: /adjuntar foto/i });
-    fireEvent.click(toggle);
-    fireEvent.click(toggle);
-    expect(toggle).toHaveAttribute('aria-checked', 'false');
+    const botonesIngreso = screen.getAllByRole('button', { name: /ingreso/i });
+    const toggleIngreso = botonesIngreso.find(b => b.className.includes('rg-type-btn'));
+    fireEvent.click(toggleIngreso);
+    await waitFor(() => {
+      expect(screen.getByText('Sueldo')).toBeInTheDocument();
+    });
   });
 });
 
