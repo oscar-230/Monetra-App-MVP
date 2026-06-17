@@ -49,7 +49,11 @@ describe('Registro — renderizado', () => {
 
   it('muestra los botones de tipo de movimiento', () => {
     renderRegistro();
-    expect(screen.getByRole('button', { name: /gasto/i })).toBeInTheDocument();
+    const botonesGasto = screen.getAllByRole('button', { name: /gasto/i });
+    const toggleGasto = botonesGasto.find((button) =>
+      button.className.includes('rg-type-btn')
+    );
+    expect(toggleGasto).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /ingreso/i })).toBeInTheDocument();
   });
 });
@@ -148,7 +152,10 @@ describe('Registro — selección de categoría', () => {
 describe('Registro — selector de tipo de movimiento', () => {
   it('el botón "Gasto" está activo por defecto', () => {
     renderRegistro();
-    const gastoBtn = screen.getByRole('button', { name: /💸.*gasto|gasto/i });
+    const botonesGasto = screen.getAllByRole('button', { name: /gasto/i });
+    const gastoBtn = botonesGasto.find((button) =>
+      button.className.includes('rg-type-btn')
+    );
     expect(gastoBtn.className).toContain('rg-type-btn--active');
   });
 
