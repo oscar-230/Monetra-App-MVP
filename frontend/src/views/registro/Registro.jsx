@@ -6,7 +6,8 @@ import { BottomNav } from '../../components/layout/BottomNav';
 import { scanInvoice } from '../../services/ocrApi';
 import { createMovement } from '../../services/movementApi';
 
-const CATEGORIAS = [
+// Categorías para movimientos de tipo "gasto"
+const CATEGORIAS_GASTO = [
   { id: 'Alimentación', label: 'Comida',     emoji: '🍔' },
   { id: 'Transporte',   label: 'Transporte', emoji: '🚌' },
   { id: 'Ocio',         label: 'Diversión',  emoji: '🎬' },
@@ -15,7 +16,18 @@ const CATEGORIAS = [
   { id: 'Otros',        label: 'Otros',      emoji: '···' },
 ];
 
-// Mapea lo que devuelve el backend a nuestras categorías internas
+// Categorías para movimientos de tipo "ingreso"
+const CATEGORIAS_INGRESO = [
+  { id: 'Sueldo',        label: 'Sueldo',        emoji: '💼' },
+  { id: 'Ingreso extra', label: 'Ingreso extra', emoji: '➕' },
+  { id: 'Otros',         label: 'Otros',         emoji: '···' },
+];
+
+// Categoría por defecto según el tipo de movimiento
+const categoriaPorDefecto = (tipo) =>
+  tipo === 'ingreso' ? CATEGORIAS_INGRESO[0].id : CATEGORIAS_GASTO[0].id;
+
+// Mapea lo que devuelve el backend (OCR) a nuestras categorías internas de gasto
 const mapearCategoria = (categoriaOCR) => {
   if (!categoriaOCR) return 'Otros';
   // Normalizar: quitar tildes y pasar a minúsculas para comparar
@@ -58,11 +70,10 @@ export const Registro = () => {
 
   const [tipoMovimiento, setTipoMovimiento] = useState('gasto');
   const [monto,          setMonto]          = useState('');
-  const [categoria,      setCategoria]      = useState('Alimentación');
+  const [categoria,      setCategoria]      = useState(categoriaPorDefecto('gasto'));
   const [nota,           setNota]           = useState('');
-  const [adjuntarFoto,   setAdjuntar]       = useState(false);
   const [fecha,          setFecha]          = useState(new Date().toISOString().slice(0, 10));
-  
+
   // ── Estado OCR / UI ────────────────────────────────────────────────
   const [ocrData,     setOcrData]    = useState(null);
   const [showPreview, setShowPreview] = useState(false);
@@ -70,6 +81,10 @@ export const Registro = () => {
   const [saving,      setSaving]     = useState(false);
   const [error,       setError]      = useState('');
   const [ocrError,    setOcrError]   = useState('');
+
+  // ── Categorías visibles según el tipo de movimiento seleccionado ───
+  const categoriasDisponibles =
+    tipoMovimiento === 'ingreso' ? CATEGORIAS_INGRESO : CATEGORIAS_GASTO;
 
   // ── Handlers de monto ──────────────────────────────────────────────
   const handleMonto = (e) => {
@@ -111,6 +126,10 @@ export const Registro = () => {
   const handleAcceptOCR = () => {
     if (!ocrData) return;
 
+    // El OCR siempre extrae facturas/comprobantes, así que el movimiento
+    // resultante se trata como un gasto.
+    setTipoMovimiento('gasto');
+
     // Monto
     if (ocrData.monto_total && ocrData.monto_total > 0) {
       setMonto(String(ocrData.monto_total));
@@ -139,7 +158,7 @@ export const Registro = () => {
     setOcrData(null);
   };
 
-  // ── Guardar gasto en backend → Firestore ───────────────────────────
+  // ── Guardar movimiento en backend → Firestore ───────────────────────
   const handleGuardar = async () => {
     const num = parseFloat(monto);
     if (!monto || isNaN(num) || num <= 0) {
@@ -152,18 +171,18 @@ export const Registro = () => {
 
     try {
       await createMovement({
-        tipo:        'gasto',           // siempre gasto → aparece negativo en UI
+        tipo:        tipoMovimiento,    // 'gasto' o 'ingreso', según lo seleccionado
         monto:       num,
         categoria:   categoria,
         fecha:       fecha,
         descripcion: nota || categoria,
         moneda:      'COP',
-        origen:      'ocr',
+        origen:      'manual',
       });
 
       navigate('/movimientos');
     } catch (err) {
-      setError(err.message || 'No fue posible guardar el gasto. Intenta de nuevo.');
+      setError(err.message || `No fue posible guardar el ${tipoMovimiento}. Intenta de nuevo.`);
     } finally {
       setSaving(false);
     }
@@ -217,7 +236,7 @@ export const Registro = () => {
               placeholder="0.00"
               value={monto}
               onChange={handleMonto}
-              aria-label="Monto del gasto"
+              aria-label={`Monto del ${tipoMovimiento}`}
             />
           </div>
 
@@ -270,27 +289,28 @@ export const Registro = () => {
             <p className="rg-error" style={{ textAlign: 'center' }}>{ocrError}</p>
           )}
         </div>
+
         {/* Tipo de movimiento */}
         <div className="rg-section">
-          <span className="rg-section-label">
-            Tipo de movimiento
-          </span>
-
-          <select
-            className="rg-type-select"
-            value={tipoMovimiento}
-            onChange={(e) =>
-              setTipoMovimiento(e.target.value)
-            }
-          >
-            <option value="gasto">
-              💸 Gasto
-            </option>
-
-            <option value="ingreso">
-              💰 Ingreso
-            </option>
-          </select>
+          <span className="rg-section-label">Tipo de movimiento</span>
+          <div className="rg-type-toggle">
+            <button
+              className={`rg-type-btn${tipoMovimiento === 'gasto' ? ' rg-type-btn--active rg-type-btn--gasto' : ''}`}
+              onClick={() => { setTipoMovimiento('gasto'); setCategoria(categoriaPorDefecto('gasto')); }}
+              type="button"
+            >
+              <span className="rg-type-btn-emoji">💸</span>
+              <span className="rg-type-btn-label">Gasto</span>
+            </button>
+            <button
+              className={`rg-type-btn${tipoMovimiento === 'ingreso' ? ' rg-type-btn--active rg-type-btn--ingreso' : ''}`}
+              onClick={() => { setTipoMovimiento('ingreso'); setCategoria(categoriaPorDefecto('ingreso')); }}
+              type="button"
+            >
+              <span className="rg-type-btn-emoji">💰</span>
+              <span className="rg-type-btn-label">Ingreso</span>
+            </button>
+          </div>
         </div>
 
         {/* ── Categorías ──────────────────────────────────────────── */}
@@ -299,7 +319,7 @@ export const Registro = () => {
             <span className="rg-section-label">Categoría</span>
           </div>
           <div className="rg-cat-grid">
-            {CATEGORIAS.map((cat) => (
+            {categoriasDisponibles.map((cat) => (
               <button
                 key={cat.id}
                 className={`rg-cat${categoria === cat.id ? ' rg-cat--active' : ''}`}
@@ -312,35 +332,20 @@ export const Registro = () => {
           </div>
         </div>
 
-        {/* ── Nota (proveedor precargado por OCR) ─────────────────── */}
+        {/* ── Nota ─────────────────────────────────────────────────── */}
         <div className="rg-section">
           <span className="rg-section-label">Nota (opcional)</span>
           <input
             className="rg-note-input"
             type="text"
-            placeholder="¿En qué gastaste esto? (ej: Carulla)"
+            placeholder={
+              tipoMovimiento === 'ingreso'
+                ? '¿De dónde viene este ingreso? (ej: Nómina junio)'
+                : '¿En qué gastaste esto? (ej: Carulla)'
+            }
             value={nota}
             onChange={(e) => setNota(e.target.value)}
             aria-label="Nota opcional"
-          />
-        </div>
-
-        {/* ── Toggle foto ──────────────────────────────────────────── */}
-        <div className="rg-toggle-row">
-          <span className="rg-toggle-label">
-            <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
-              <path strokeLinecap="round" strokeLinejoin="round"
-                d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-            Adjuntar foto
-          </span>
-          <button
-            className={`rg-toggle${adjuntarFoto ? ' rg-toggle--on' : ''}`}
-            onClick={() => setAdjuntar(!adjuntarFoto)}
-            role="switch"
-            aria-checked={adjuntarFoto}
-            aria-label="Adjuntar foto"
           />
         </div>
 
@@ -389,8 +394,8 @@ export const Registro = () => {
                 <div className="ocr-field">
                   <span className="ocr-field-label">CATEGORÍA</span>
                   <span className="ocr-field-value ocr-category-pill">
-                    {CATEGORIAS.find(c => c.id === mapearCategoria(ocrData.categoria || ocrData.descripcion))?.emoji || '···'}{' '}
-                    {CATEGORIAS.find(c => c.id === mapearCategoria(ocrData.categoria || ocrData.descripcion))?.label || 'Otros'}
+                    {CATEGORIAS_GASTO.find(c => c.id === mapearCategoria(ocrData.categoria || ocrData.descripcion))?.emoji || '···'}{' '}
+                    {CATEGORIAS_GASTO.find(c => c.id === mapearCategoria(ocrData.categoria || ocrData.descripcion))?.label || 'Otros'}
                   </span>
                 </div>
                 <div className="ocr-field">
