@@ -10,15 +10,17 @@ import './MovimientosView.css';
 
 // ── Helpers visuales ──────────────────────────────────────────────────────
 const CATEGORY_MAP = {
-  'Alimentación': { emoji: '🍔', color: '#10b981' },
-  'Transporte':   { emoji: '🚗', color: '#3b82f6' },
-  'Ocio':         { emoji: '🎬', color: '#8b5cf6' },
-  'Salud':        { emoji: '❤️',  color: '#ef4444' },
-  'Compras':      { emoji: '🛍️', color: '#f59e0b' },
-  'Servicios':    { emoji: '⚡',  color: '#06b6d4' },
-  'Vivienda':     { emoji: '🏠',  color: '#84cc16' },
-  'Educación':    { emoji: '📚',  color: '#a855f7' },
-  'Sin categoría':{ emoji: '📋',  color: '#6b7280' },
+  'Alimentación':  { emoji: '🍔', color: '#10b981' },
+  'Transporte':    { emoji: '🚗', color: '#3b82f6' },
+  'Ocio':          { emoji: '🎬', color: '#8b5cf6' },
+  'Salud':         { emoji: '❤️',  color: '#ef4444' },
+  'Compras':       { emoji: '🛍️', color: '#f59e0b' },
+  'Servicios':     { emoji: '⚡',  color: '#06b6d4' },
+  'Vivienda':      { emoji: '🏠',  color: '#84cc16' },
+  'Educación':     { emoji: '📚',  color: '#a855f7' },
+  'Sueldo':        { emoji: '💼', color: '#16a34a' },
+  'Ingreso extra': { emoji: '➕', color: '#22c55e' },
+  'Sin categoría': { emoji: '📋',  color: '#6b7280' },
 };
 
 const enrichMovimiento = (mov) => {

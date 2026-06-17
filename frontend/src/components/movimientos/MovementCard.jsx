@@ -1,12 +1,10 @@
-export const MovementCard = ({
-  movimiento,
-  onEdit,
-}) => {
+export const MovementCard = ({ movimiento, onEdit }) => {
+  const esIngreso = movimiento.tipo === 'ingreso';
+
   return (
     <div className="movement-card">
-
       <div className="movement-icon-wrapper">
-        <div 
+        <div
           className="movement-icon"
           style={{ backgroundColor: movimiento.color || '#10b981' }}
         >
@@ -21,24 +19,20 @@ export const MovementCard = ({
 
       <div className="movement-actions">
         <div className="movement-amount-section">
-          <span className="movement-amount">
-            -$
+          <span
+            className="movement-amount"
+            style={{ color: esIngreso ? '#16a34a' : '#dc2626' }}
+          >
+            {esIngreso ? '+' : '-'}$
             {movimiento.monto.toLocaleString('es-CO')}
           </span>
-          <span className="movement-time">
-            {movimiento.hora || ''}
-          </span>
+          <span className="movement-time">{movimiento.hora || ''}</span>
         </div>
 
-        <button
-          className="movement-edit-btn"
-          onClick={() => onEdit(movimiento)}
-        >
+        <button className="movement-edit-btn" onClick={() => onEdit(movimiento)}>
           ✏️
         </button>
-
       </div>
-
     </div>
   );
 };
