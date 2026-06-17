@@ -86,14 +86,6 @@ export const Registro = () => {
   const categoriasDisponibles =
     tipoMovimiento === 'ingreso' ? CATEGORIAS_INGRESO : CATEGORIAS_GASTO;
 
-  // ── Cambiar tipo de movimiento (gasto / ingreso) ────────────────────
-  const handleTipoChange = (e) => {
-    const nuevoTipo = e.target.value;
-    setTipoMovimiento(nuevoTipo);
-    // Al cambiar de tipo, reseteamos la categoría a la primera de la nueva lista
-    setCategoria(categoriaPorDefecto(nuevoTipo));
-  };
-
   // ── Handlers de monto ──────────────────────────────────────────────
   const handleMonto = (e) => {
     const val = e.target.value.replace(/[^0-9.]/g, '');
