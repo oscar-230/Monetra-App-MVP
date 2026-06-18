@@ -204,6 +204,46 @@
   margin: 0;
 }
 
+/* Estados: cargando / error / vacío */
+.analisis-loading-banner {
+  background: #F0FAF4;
+  color: #1A7A4A;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid #D8EFE0;
+}
+
+.analisis-error-banner {
+  background: #FDEDEE;
+  color: #B42318;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid #F5C2C7;
+}
+
+.analisis-loading-text {
+  font-size: 12px;
+  color: #9CA3AF;
+  margin: 0;
+}
+
+.analisis-empty-text {
+  font-size: 12px;
+  color: #9CA3AF;
+  margin: 0;
+}
+
+.analisis-trend-desc {
+  font-size: 12px;
+  color: #6B7280;
+  line-height: 1.5;
+  margin: 0;
+}
+
 /* ---- Botones IA ---- */
 .analisis-ia-actions {
   display: flex;
@@ -380,6 +420,22 @@
   font-size: 11px;
   color: #6B7280;
   line-height: 1.9;
+}
+
+.analisis-dist-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+}
+
+.analisis-dist-legend-name {
+  flex: 1;
+}
+
+.analisis-dist-legend-pct {
+  color: #888;
+  font-weight: 600;
 }
 
 .analisis-dist-legend p {
