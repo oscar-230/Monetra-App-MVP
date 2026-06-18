@@ -98,7 +98,6 @@ def get_goal(uid: str, goal_id: str) -> Dict[str, Any]:
 
 
 def list_goals(uid: str, solo_activas: bool = False) -> List[Dict[str, Any]]:
-    
     collection_ref = get_goals_collection(uid)
 
     query = collection_ref
@@ -106,12 +105,18 @@ def list_goals(uid: str, solo_activas: bool = False) -> List[Dict[str, Any]]:
     if solo_activas:
         query = query.where("estado", "==", "activa")
 
-    query = query.order_by("creadoEn", direction=firestore.Query.DESCENDING)
-
+    # SOLUCIÓN: Eliminamos .order_by() de Firestore para evitar la necesidad del índice compuesto.
+    # Traemos los documentos usando solo el filtro básico.
     documents = query.stream()
 
-    return [normalize_goal_document(document) for document in documents]
+    # Procesamos y normalizamos los documentos a diccionarios de Python
+    goals_list = [normalize_goal_document(document) for document in documents]
 
+    # Ordenamos manualmente en memoria con Python usando la clave "creadoEn" (Descendente)
+    # Usamos un valor por defecto vacío "" en caso de que "creadoEn" venga como None
+    goals_list.sort(key=lambda x: x.get("creadoEn") or "", reverse=True)
+
+    return goals_list
 
 def update_goal(
     uid: str,
