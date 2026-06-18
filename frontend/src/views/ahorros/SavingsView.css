@@ -1,168 +1,85 @@
-/* SavingsView.css */
+/* src/views/ahorros/SavingsView.css */
 
 /* Main container */
 .savings-container {
   min-height: 100vh;
-  font-family: sans-serif;
+  font-family: system-ui, -apple-system, sans-serif;
   position: relative;
   padding-bottom: 6rem;
-  background: #f2f4f7;
+  background: #f8fafc;
 }
 
 /* Main content */
 .savings-main {
-  padding: 1.5rem 1rem;
-  max-width: 64rem;
+  padding: 2rem 1.5rem;
+  max-width: 68rem;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 2rem;
 }
 
-/* Savings Overview Card */
-.savings-overview-card {
-  background: linear-gradient(135deg, #1a7a50 0%, #2d8f5e 100%);
-  border-radius: 1rem;
-  padding: 1.5rem;
-  color: white;
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-  position: relative;
-  overflow: hidden;
-}
-
-.savings-overview-card::before {
-  content: '';
-  position: absolute;
-  top: -50%;
-  right: -20%;
-  width: 200px;
-  height: 200px;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 50%;
-}
-
-.savings-overview-card::after {
-  content: '';
-  position: absolute;
-  bottom: -30%;
-  right: 10%;
-  width: 100px;
-  height: 100px;
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 50%;
-}
-
-.savings-overview-content {
-  position: relative;
-  z-index: 1;
-}
-
-.savings-overview-label {
-  font-size: 0.875rem;
-  font-weight: 500;
-  opacity: 0.9;
-  margin-bottom: 0.25rem;
-}
-
-.savings-overview-amount {
-  font-size: 2.5rem;
-  font-weight: bold;
-  margin-bottom: 0.5rem;
-}
-
-.savings-overview-comparison {
-  font-size: 0.875rem;
-  opacity: 0.85;
-}
-
-.savings-goal-progress {
-  position: relative;
-  z-index: 1;
-  background: rgba(255, 255, 255, 0.15);
-  border-radius: 0.75rem;
-  padding: 1rem;
-}
-
-.savings-goal-label {
-  font-size: 0.875rem;
+.loading-bar-pulse {
+  background: #e2e8f0;
+  color: #067A3B;
   font-weight: 600;
-  margin-bottom: 0.25rem;
+  text-align: center;
+  padding: 8px;
+  border-radius: 8px;
+  animation: pulse 1.5s infinite ease-in-out;
 }
 
-.savings-goal-amount {
-  font-size: 0.875rem;
-  opacity: 0.9;
-  margin-bottom: 0.75rem;
+@keyframes pulse {
+  0% { opacity: 0.6; }
+  50% { opacity: 1; }
+  100% { opacity: 0.6; }
 }
 
-.savings-progress-bar {
-  height: 0.5rem;
-  background: rgba(255, 255, 255, 0.3);
-  border-radius: 9999px;
-  overflow: hidden;
-  margin-bottom: 0.5rem;
-}
-
-.savings-progress-fill {
-  height: 100%;
-  background: white;
-  border-radius: 9999px;
-  transition: width 0.3s ease;
-}
-
-.savings-progress-text {
-  font-size: 0.75rem;
-  opacity: 0.9;
-  text-align: right;
-}
-
-.savings-goal-actions {
+/* --- BANNER UNIFICADO SUPERIOR --- */
+.savings-overview-card-unified {
+  background: #05632f; 
+  border-radius: 24px;
+  padding: 24px;
   display: flex;
-  gap: 0.5rem;
-  margin-top: 0.75rem;
+  color: white;
 }
 
-.savings-goal-action-btn {
+.savings-monthly-panel {
   flex: 1;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.375rem;
-  padding: 0.5rem 0.75rem;
-  border-radius: 0.5rem;
-  font-size: 0.75rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: opacity 0.3s ease;
-  border: none;
+  flex-direction: column;
+  gap: 6px;
 }
 
-.savings-goal-action-btn:hover {
-  opacity: 0.8;
+.savings-monthly-label {
+  font-size: 0.9rem;
+  opacity: 0.85;
+  font-weight: 500;
+  margin: 0;
 }
 
-.savings-goal-action-btn.deposit {
-  background: rgba(255, 255, 255, 0.25);
-  color: white;
+.savings-monthly-amount {
+  font-size: 2.5rem;
+  font-weight: 800;
+  margin: 0;
+  letter-spacing: -0.5px;
 }
 
-.savings-goal-action-btn.withdraw {
+.savings-monthly-badge {
   background: rgba(255, 255, 255, 0.15);
-  color: white;
+  padding: 6px 14px;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  margin-top: 4px;
+  width: fit-content;
 }
 
-.savings-goal-action-btn svg {
-  width: 1rem;
-  height: 1rem;
-}
-
-/* Section styles */
+/* --- SECCIONES COMUNES --- */
 .savings-section {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 1.25rem;
 }
 
 .savings-section-header {
@@ -172,299 +89,252 @@
 }
 
 .savings-section-title {
-  font-size: 1.125rem;
-  font-weight: bold;
-  color: #1f2937;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0;
 }
 
-.savings-section-link {
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: #1a7a50;
-  background: none;
-  border: none;
-  cursor: pointer;
-}
-
-/* Challenges list */
-.challenges-list {
+/* --- SLIDER HORIZONTAL DE METAS MULTIPLES --- */
+.savings-goals-slider {
   display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
+  gap: 1.25rem;
+  overflow-x: auto;
+  padding-bottom: 10px;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: thin;
 }
 
-.challenge-card {
-  background: white;
-  border-radius: 0.75rem;
-  padding: 1rem;
-  display: flex;
-  gap: 1rem;
-  border: 1px solid #f3f4f6;
+.savings-goals-slider::-webkit-scrollbar {
+  height: 6px;
 }
 
-.challenge-icon-wrapper {
-  width: 3rem;
-  height: 3rem;
-  border-radius: 0.75rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  background: #f0fdf4;
-  color: #1a7a50;
+.savings-goals-slider::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 10px;
 }
 
-.challenge-content {
+.savings-featured-goal-card {
+  scroll-snap-align: start;
+  min-width: 320px;
   flex: 1;
+  background: white;
+  border-radius: 20px;
+  padding: 20px;
   display: flex;
   flex-direction: column;
-  gap: 0.375rem;
+  gap: 14px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+  cursor: pointer;
+  transition: transform 0.2s, border-color 0.2s;
 }
 
-.challenge-header {
+.savings-featured-goal-card:hover {
+  transform: translateY(-2px);
+  border-color: #067A3B;
+}
+
+.savings-featured-goal-card.empty {
+  min-width: 100%;
+  background: transparent;
+  border: 2px dashed #cbd5e1;
+  box-shadow: none;
+  justify-content: center;
+  align-items: center;
+  color: #64748b;
+  text-align: center;
+}
+
+.featured-goal-header {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
-  gap: 0.5rem;
-}
-
-.challenge-title {
-  font-size: 0.95rem;
-  font-weight: 600;
-  color: #1f2937;
-}
-
-.challenge-status {
-  font-size: 0.7rem;
-  font-weight: 600;
-  padding: 0.25rem 0.625rem;
-  border-radius: 9999px;
-  white-space: nowrap;
-}
-
-.challenge-status.green {
-  background: #dcfce7;
-  color: #166534;
-}
-
-.challenge-status.gray {
-  background: #f3f4f6;
-  color: #6b7280;
-}
-
-.challenge-description {
-  font-size: 0.8rem;
-  color: #6b7280;
-  line-height: 1.4;
-}
-
-.challenge-join-btn {
-  margin-top: 0.25rem;
-  font-size: 0.8rem;
-  font-weight: 600;
-  padding: 0.5rem 1rem;
-  border-radius: 0.5rem;
-  background: #1a7a50;
-  color: white;
-  border: none;
-  cursor: pointer;
-  align-self: flex-start;
-  transition: opacity 0.3s ease;
-}
-
-.challenge-join-btn:hover {
-  opacity: 0.9;
-}
-
-.challenge-badge-points {
-  display: flex;
   align-items: center;
-  gap: 0.25rem;
-  margin-top: 0.25rem;
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: #1a7a50;
 }
 
-/* Recommendations list */
-.recommendations-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.recommendation-item {
-  background: white;
-  border-radius: 0.75rem;
-  padding: 1rem;
-  display: flex;
-  gap: 0.75rem;
-  border: 1px solid #f3f4f6;
-  align-items: flex-start;
-}
-
-.recommendation-icon-wrapper {
-  width: 2.5rem;
-  height: 2.5rem;
-  border-radius: 0.625rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  background: #fef3f0;
-  color: #c0392b;
-}
-
-.recommendation-content {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
-.recommendation-title {
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: #1f2937;
-}
-
-.recommendation-description {
-  font-size: 0.75rem;
-  color: #6b7280;
-  line-height: 1.4;
-}
-
-.recommendation-savings {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  flex-shrink: 0;
-}
-
-.recommendation-savings-amount {
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: #1a7a50;
-}
-
-.recommendation-menu-btn {
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: #9ca3af;
-  padding: 0.25rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: color 0.3s ease;
-}
-
-.recommendation-menu-btn:hover {
-  color: #6b7280;
-}
-
-/* Create Goal Card */
-.create-goal-card {
-  background: white;
-  border-radius: 1rem;
-  padding: 1.5rem;
-  display: flex;
-  gap: 1rem;
-  border: 2px dashed #d1d5db;
-  cursor: pointer;
-  transition: border-color 0.3s ease, background-color 0.3s ease;
-}
-
-.create-goal-card:hover {
-  border-color: #1a7a50;
-  background-color: #f0fdf4;
-}
-
-.create-goal-icon {
-  width: 3rem;
-  height: 3rem;
-  border-radius: 0.75rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  background: #f0fdf4;
-  color: #1a7a50;
-}
-
-.create-goal-content {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 0.375rem;
-}
-
-.create-goal-title {
+.featured-goal-title {
   font-size: 1rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.featured-goal-action-indicator {
+  font-size: 0.8rem;
   font-weight: 600;
-  color: #1f2937;
+  color: #067A3B;
+  background: #f0fdf4;
+  padding: 4px 10px;
+  border-radius: 8px;
 }
 
-.create-goal-description {
-  font-size: 0.875rem;
-  color: #6b7280;
-  line-height: 1.5;
+.featured-goal-progress-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
-/* Responsive adjustments */
-@media (max-width: 640px) {
-  .savings-main {
-    padding: 1rem;
-  }
-
-  .savings-overview-amount {
-    font-size: 2rem;
-  }
-
-  .savings-overview-card {
-    padding: 1.25rem;
-  }
-
-  .challenge-card {
-    padding: 0.875rem;
-  }
-
-  .recommendation-item {
-    padding: 0.875rem;
-  }
-
-  .create-goal-card {
-    padding: 1.25rem;
-  }
-
-  .goal-modal {
-    width: 90%;
-    max-width: 400px;
-  }
+.featured-progress-bar-wrapper {
+  flex: 1;
+  height: 8px;
+  background: #f1f5f9;
+  border-radius: 99px;
+  overflow: hidden;
 }
 
-/* Goal Modal */
+.featured-progress-bar-fill {
+  height: 100%;
+  background: #067A3B;
+  border-radius: 99px;
+  transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.featured-progress-percentage-text {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.featured-goal-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.8rem;
+  color: #64748b;
+}
+
+.featured-goal-amounts {
+  font-weight: 600;
+  color: #334155;
+}
+
+.featured-goal-prediction {
+  font-style: italic;
+  color: #067A3B;
+}
+
+/* --- HISTORIAL DE AHORROS --- */
+.savings-history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.history-item {
+  background: white;
+  border-radius: 14px;
+  padding: 14px 18px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  border: 1px solid #e2e8f0;
+}
+
+.history-icon-wrapper {
+  width: 38px;
+  height: 38px;
+  background: #f0fdf4;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.history-content {
+  flex: 1;
+}
+
+.history-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #0f172a;
+  margin: 0;
+}
+
+.history-date {
+  font-size: 0.75rem;
+  color: #64748b;
+  margin: 2px 0 0 0;
+}
+
+.history-amount-positive {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #067A3B;
+}
+
+.history-empty-state {
+  text-align: center;
+  padding: 24px;
+  color: #94a3b8;
+  font-size: 0.85rem;
+  border: 1px dashed #e2e8f0;
+  border-radius: 14px;
+}
+
+/* --- BOTÓN TARJETA PUNTEADA --- */
+.create-goal-dashed-card {
+  background: white;
+  border-radius: 20px;
+  padding: 28px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  border: 2px dashed #cbd5e1;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.create-goal-dashed-card:hover {
+  border-color: #067A3B;
+  background-color: #f6fdf9;
+}
+
+.create-goal-dashed-icon {
+  width: 40px;
+  height: 40px;
+  background: #f0fdf4;
+  color: #067A3B;
+  border-radius: 50%;
+  font-size: 1.4rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 10px;
+}
+
+.create-goal-dashed-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0 0 4px 0;
+}
+
+.create-goal-dashed-description {
+  font-size: 0.8rem;
+  color: #64748b;
+  max-width: 26rem;
+  margin: 0;
+  line-height: 1.4;
+}
+
+/* --- MODALES --- */
 .goal-modal-overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(15, 23, 42, 0.3);
+  backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 100;
-  padding: 1rem;
+  z-index: 999;
 }
 
 .goal-modal {
   background: white;
-  border-radius: 1rem;
+  border-radius: 20px;
   width: 100%;
-  max-width: 500px;
-  max-height: 90vh;
-  overflow-y: auto;
+  max-width: 440px;
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
 }
 
@@ -472,98 +342,83 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 1.5rem;
-  border-bottom: 1px solid #f3f4f6;
+  padding: 18px 24px;
+  border-bottom: 1px solid #f1f5f9;
 }
 
 .goal-modal-title {
-  font-size: 1.25rem;
-  font-weight: bold;
-  color: #1f2937;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0;
 }
 
 .goal-modal-close {
   background: none;
   border: none;
+  font-size: 1rem;
+  color: #94a3b8;
   cursor: pointer;
-  color: #9ca3af;
-  padding: 0.5rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: color 0.3s ease;
-}
-
-.goal-modal-close:hover {
-  color: #6b7280;
 }
 
 .goal-modal-form {
-  padding: 1.5rem;
+  padding: 24px;
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
+  gap: 16px;
 }
 
 .goal-form-group {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 6px;
 }
 
 .goal-form-label {
-  font-size: 0.875rem;
+  font-size: 0.85rem;
   font-weight: 600;
-  color: #374151;
+  color: #334155;
 }
 
 .goal-form-input {
-  padding: 0.75rem 1rem;
-  border: 1px solid #d1d5db;
-  border-radius: 0.5rem;
-  font-size: 0.95rem;
-  color: #1f2937;
-  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+  padding: 10px 14px;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  font-size: 0.9rem;
 }
 
 .goal-form-input:focus {
   outline: none;
-  border-color: #1a7a50;
-  box-shadow: 0 0 0 3px rgba(26, 122, 80, 0.1);
-}
-
-.goal-form-input::placeholder {
-  color: #9ca3af;
+  border-color: #067A3B;
 }
 
 .goal-modal-actions {
   display: flex;
-  gap: 0.75rem;
-  margin-top: 0.5rem;
+  gap: 12px;
+  margin-top: 8px;
 }
 
 .goal-modal-btn {
   flex: 1;
-  padding: 0.75rem 1rem;
-  border-radius: 0.5rem;
-  font-size: 0.875rem;
+  padding: 12px;
+  border-radius: 10px;
   font-weight: 600;
+  font-size: 0.9rem;
   cursor: pointer;
-  transition: opacity 0.3s ease;
-}
-
-.goal-modal-btn:hover {
-  opacity: 0.9;
+  border: none;
 }
 
 .goal-modal-btn-cancel {
-  background: #f3f4f6;
-  color: #374151;
-  border: 1px solid #d1d5db;
+  background: #f1f5f9;
+  color: #475569;
 }
 
 .goal-modal-btn-submit {
-  background: #1a7a50;
+  background: #067A3B;
   color: white;
-  border: none;
+}
+
+@media (max-width: 640px) {
+  .savings-main { padding: 1rem; }
+  .savings-featured-goal-card { min-width: 280px; }
 }
