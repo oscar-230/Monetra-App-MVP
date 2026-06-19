@@ -4,14 +4,12 @@ import { Chart, registerables } from "chart.js";
 import { AppHeader } from "../../components/layout/AppHeader";
 import { BottomNav } from "../../components/layout/BottomNav";
 import { useFinancialHistory } from "../../hooks/useFinancialHistory";
+import { getFinancialAnalysis, getFinancialRecommendations, getLatestRecommendation } from "../../services/financialAiApi";
 import "./AnalisisView.css";
 
 Chart.register(...registerables);
 
 // ─── Paleta de categorías ──────────────────────────────────────────────────────
-// Cada categoría tiene color sólido para la barra y el donut, más ícono y fondo.
-// Paleta ajustada para máxima distinción visual entre las 8 categorías
-// (se separaron los pares que antes se confundían: Alimentación/Servicios y Ocio/Vivienda).
 const CATEGORY_STYLE_MAP = {
   Alimentación: { icon: "🍔", color: "#22C55E", iconBg: "#DCFCE7" },
   Transporte: { icon: "🚗", color: "#3B82F6", iconBg: "#DBEAFE" },
@@ -25,16 +23,12 @@ const CATEGORY_STYLE_MAP = {
   Otros: { icon: "🔖", color: "#374151", iconBg: "#E5E7EB" },
 };
 
-// Colores de respaldo para categorías que no están en CATEGORY_STYLE_MAP
-// (ej. categorías personalizadas que el usuario haya creado fuera de las
-// 8 oficiales del sistema). Verificados para no solaparse visualmente con
-// ninguno de los colores ya usados en el mapa fijo de arriba.
 const FALLBACK_COLORS = [
-  "#DB2777", // rosa
-  "#EC4899", // rosa chicle
-  "#A78BFA", // lavanda
-  "#2DD4BF", // turquesa claro
-  "#BE185D", // magenta oscuro
+  "#DB2777",
+  "#EC4899",
+  "#A78BFA",
+  "#2DD4BF",
+  "#BE185D",
 ];
 
 const getCategoryStyle = (nombre, index = 0) =>
@@ -68,10 +62,6 @@ const calcDailyAverage = (resumen, dias = 30) => {
 
 // ─── Construcción de datos de gráfica ─────────────────────────────────────────
 
-/**
- * Vista MENSUAL: cada punto = un mes del historialMensual.
- * Label: "Ene", "Feb", …
- */
 const buildMonthlyChartData = (historialMensual = []) => {
   const labels = historialMensual.map((m) => {
     if (!m.mes || m.mes === "sin-fecha") return "?";
@@ -87,15 +77,10 @@ const buildMonthlyChartData = (historialMensual = []) => {
   return { labels, data: historialMensual.map((m) => m.gastos) };
 };
 
-/**
- * Vista SEMANAL: agrupa los movimientos del mes actual por semana ISO.
- * Espera recibir el array `movimientos` crudo del backend.
- * Semana 1 = días 1-7, Semana 2 = 8-14, Semana 3 = 15-21, Semana 4 = 22-fin.
- */
 const buildWeeklyChartData = (movimientos = []) => {
   const now = new Date();
   const year = now.getFullYear();
-  const month = now.getMonth(); // 0-indexed
+  const month = now.getMonth();
 
   const weeks = { "Sem 1": 0, "Sem 2": 0, "Sem 3": 0, "Sem 4": 0 };
 
@@ -116,7 +101,6 @@ const buildWeeklyChartData = (movimientos = []) => {
   };
 };
 
-/** Variación % entre el último y el penúltimo mes. */
 const calcMonthlyVariation = (historialMensual) => {
   if (!historialMensual || historialMensual.length < 2) return null;
   const last = historialMensual[historialMensual.length - 1];
@@ -133,38 +117,134 @@ const ANALISIS_ANTERIOR = {
 Durante mayo registraste un gasto total de $3.800.000, un 7.3% menor al mes anterior. Tu categoría principal siguió siendo Comida y Restaurantes con $280.000, seguida de Transporte con $210.000.
 
 **Puntos destacados:**
-• Lograste reducir gastos en entretenimiento un 15% respecto a abril.
-• El gasto diario promedio fue de $126.600, dentro del rango saludable.
-• Tu tasa de ahorro del 16% estuvo por debajo de tu meta del 20%.
+- Lograste reducir gastos en entretenimiento un 15% respecto a abril.
+- El gasto diario promedio fue de $126.600, dentro del rango saludable.
+- Tu tasa de ahorro del 16% estuvo por debajo de tu meta del 20%.
 
 **Recomendación aplicada:** Preparar comida en casa al menos 3 veces por semana redujo tu gasto en restaurantes en $45.000 respecto a abril.`,
 };
 
+// ─── Formateador de respuesta de la IA (análisis + recomendaciones) ──────────
+const formatearAnalisisIA = (analisisData = {}, recomendacionesData = {}) => {
+  const partes = [];
+
+  if (analisisData.resumenEjecutivo) {
+    partes.push(`**Resumen**\n\n${analisisData.resumenEjecutivo}`);
+  }
+
+  if (analisisData.patronesDetectados?.length) {
+    const items = analisisData.patronesDetectados
+      .map((p) => `• ${p.titulo}: ${p.descripcion}`)
+      .join("\n");
+    partes.push(`**Lo que notamos**\n\n${items}`);
+  }
+
+  if (recomendacionesData.recomendaciones?.length) {
+    const items = recomendacionesData.recomendaciones
+      .map((r) => `• ${r.titulo}: ${r.accionSugerida}`)
+      .join("\n");
+    partes.push(`**Consejos para ti**\n\n${items}`);
+  }
+
+  const mensajeFinal =
+    analisisData.mensajeFinal || recomendacionesData.mensajeFinal;
+  if (mensajeFinal) {
+    partes.push(mensajeFinal);
+  }
+
+  return (
+    partes.join("\n\n") ||
+    "No fue posible generar un análisis con los datos disponibles."
+  );
+};
+
+const generarAnalisis = async () => {
+  setEstado("loading");
+  setAnalisis("");
+  try {
+    const [analisisRes, recomendacionesRes] = await Promise.all([
+      getFinancialAnalysis({
+        movimientos: historial?.movimientos || [],
+        periodo: historial?.periodo || null,
+      }),
+      saveFinancialRecommendations({   // ← ahora guarda en Firestore
+        movimientos: historial?.movimientos || [],
+        periodo: historial?.periodo || null,
+      }),
+    ]);
+
+    setAnalisis(
+      formatearAnalisisIA(analisisRes.data || {}, recomendacionesRes.data || {}),
+    );
+    setEstado("done");
+  } catch (err) {
+    setAnalisis(err.message || "Ocurrió un error al generar el análisis. Intenta de nuevo.");
+    setEstado("done");
+  }
+};
+
 // ─── Modal IA ──────────────────────────────────────────────────────────────────
-const ModalIA = ({ modo, onClose }) => {
+const ModalIA = ({ modo, onClose, historial }) => {
   const [estado, setEstado] = useState("idle");
   const [analisis, setAnalisis] = useState("");
   const esNuevo = modo === "nuevo";
 
+  // Carga el análisis anterior desde Firestore al abrir en modo "anterior"
+  useEffect(() => {
+    if (modo !== "anterior") return;
+
+    setEstado("loading");
+    getLatestRecommendation()
+      .then((registro) => {
+        if (!registro) {
+          setAnalisis("Aún no tienes análisis guardados. Genera uno primero con el botón \"Generar análisis con IA\".");
+        } else {
+          const fecha = registro.creadoEn
+            ? new Date(registro.creadoEn).toLocaleDateString("es-CO", {
+                day: "numeric",
+                month: "long",
+                year: "numeric",
+              })
+            : "Fecha desconocida";
+          setAnalisis(
+            `**Análisis guardado — ${fecha}**\n\n` +
+            formatearAnalisisIA({}, registro.data || {})
+          );
+        }
+        setEstado("done");
+      })
+      .catch((err) => {
+        setAnalisis(err.message || "No fue posible cargar el análisis anterior.");
+        setEstado("done");
+      });
+  }, [modo]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const generarAnalisis = async () => {
     setEstado("loading");
     setAnalisis("");
-    const prompt = `Eres un asesor financiero personal experto. Analiza estos datos financieros del usuario y genera un análisis detallado en español con recomendaciones prácticas.`;
     try {
-      const response = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: "claude-sonnet-4-6",
-          max_tokens: 1000,
-          messages: [{ role: "user", content: prompt }],
+      const [analisisRes, recomendacionesRes] = await Promise.all([
+        getFinancialAnalysis({
+          movimientos: historial?.movimientos || [],
+          periodo: historial?.periodo || null,
         }),
-      });
-      const data = await response.json();
-      setAnalisis(data.content?.find((b) => b.type === "text")?.text || "");
+        saveFinancialRecommendations({   // ← guarda en users/{uid}/recommendations
+          movimientos: historial?.movimientos || [],
+          periodo: historial?.periodo || null,
+        }),
+      ]);
+
+      setAnalisis(
+        formatearAnalisisIA(
+          analisisRes.data || {},
+          recomendacionesRes.data || {},
+        ),
+      );
       setEstado("done");
-    } catch {
-      setAnalisis("Ocurrió un error al generar el análisis. Intenta de nuevo.");
+    } catch (err) {
+      setAnalisis(
+        err.message || "Ocurrió un error al generar el análisis. Intenta de nuevo.",
+      );
       setEstado("done");
     }
   };
@@ -194,99 +274,64 @@ const ModalIA = ({ modo, onClose }) => {
               <p className="modal-subtitle">
                 {esNuevo
                   ? "Generado para el período actual"
-                  : `Período: ${ANALISIS_ANTERIOR.fecha}`}
+                  : "Tu último análisis guardado"}
               </p>
             </div>
           </div>
           <button className="modal-close" onClick={onClose} aria-label="Cerrar">
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth={2.5}
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M6 18L18 6M6 6l12 12"
-              />
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
         </div>
 
         <div className="modal-body">
-          {!esNuevo && (
-            <div className="modal-content-text">
-              {renderTexto(ANALISIS_ANTERIOR.contenido)}
+          {/* Estado: cargando */}
+          {estado === "loading" && (
+            <div className="modal-loading">
+              <div className="modal-spinner" />
+              <p className="modal-loading-text">
+                {esNuevo ? "Analizando tus finanzas..." : "Cargando análisis anterior..."}
+              </p>
+              <p className="modal-loading-sub">Esto puede tomar unos segundos</p>
             </div>
           )}
 
+          {/* Estado: inicial (solo modo nuevo) */}
           {esNuevo && estado === "idle" && (
             <div className="modal-empty-state">
               <div className="modal-empty-icon">🤖</div>
-              <p className="modal-empty-title">
-                Listo para analizar tus finanzas
-              </p>
+              <p className="modal-empty-title">Listo para analizar tus finanzas</p>
               <p className="modal-empty-desc">
                 La IA revisará tus gastos, categorías, metas y tendencias del
-                período actual.
+                período actual y guardará el resultado para que puedas consultarlo después.
               </p>
               <button className="modal-generate-btn" onClick={generarAnalisis}>
-                <svg
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth={2}
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M13 10V3L4 14h7v7l9-11h-7z"
-                  />
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
                 </svg>
                 Generar ahora
               </button>
             </div>
           )}
 
-          {estado === "loading" && (
-            <div className="modal-loading">
-              <div className="modal-spinner" />
-              <p className="modal-loading-text">Analizando tus finanzas...</p>
-              <p className="modal-loading-sub">
-                Esto puede tomar unos segundos
-              </p>
-            </div>
-          )}
-
+          {/* Estado: resultado */}
           {estado === "done" && (
             <div className="modal-content-text">{renderTexto(analisis)}</div>
           )}
         </div>
 
-        {esNuevo && estado === "done" && (
+        {/* Footer: solo aparece cuando hay resultado */}
+        {estado === "done" && (
           <div className="modal-footer">
-            <button className="modal-retry-btn" onClick={generarAnalisis}>
-              <svg
-                width="14"
-                height="14"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={2}
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                />
-              </svg>
-              Regenerar análisis
-            </button>
+            {esNuevo && (
+              <button className="modal-retry-btn" onClick={generarAnalisis}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                Regenerar análisis
+              </button>
+            )}
             <button className="modal-close-btn" onClick={onClose}>
               Cerrar
             </button>
@@ -300,25 +345,20 @@ const ModalIA = ({ modo, onClose }) => {
 // ─── Componente principal ──────────────────────────────────────────────────────
 
 export const AnalisisView = () => {
-  // "Semanal" muestra gastos del mes actual por semana
-  // "Mensual" muestra los últimos 6 meses
   const [periodo, setPeriodo] = useState("Mensual");
   const [modalModo, setModalModo] = useState(null);
 
-  // ── Estado de datos (conectado al backend vía hook) ────────────────────────
   const {
     historial,
     loading: cargando,
     error,
   } = useFinancialHistory({ meses: 6 });
 
-  // ── Refs Chart.js ──────────────────────────────────────────────────────────
   const trendRef = useRef(null);
   const donutRef = useRef(null);
   const trendChart = useRef(null);
   const donutChart = useRef(null);
 
-  // ── Escape para cerrar modal ───────────────────────────────────────────────
   useEffect(() => {
     const h = (e) => {
       if (e.key === "Escape") setModalModo(null);
@@ -327,19 +367,16 @@ export const AnalisisView = () => {
     return () => document.removeEventListener("keydown", h);
   }, []);
 
-  // ── Datos derivados ────────────────────────────────────────────────────────
   const historialMensual = historial?.historialMensual || [];
   const movimientos = historial?.movimientos || [];
   const resumen = historial?.resumenGeneral || null;
   const promedios = historial?.promediosMensuales || null;
 
-  // Datos para la gráfica según el toggle
   const datosGrafica =
     periodo === "Semanal"
       ? buildWeeklyChartData(movimientos)
       : buildMonthlyChartData(historialMensual);
 
-  // Métricas superiores
   const totalGastado = formatCOP(resumen?.totalGastos);
   const tasaAhorro = calcSavingsRate(resumen);
   const promedioDiario = promedios
@@ -352,7 +389,6 @@ export const AnalisisView = () => {
       ? `${Number(variacion) > 0 ? "↗" : "↘"} ${Math.abs(variacion)}% vs mes anterior`
       : "Sin datos suficientes";
 
-  // ── Categorías frecuentes (top 3 para las barras) ─────────────────────────
   const categoriasFrecuentes = (historial?.categoriasFrecuentes || []).slice(
     0,
     3,
@@ -369,9 +405,6 @@ export const AnalisisView = () => {
     };
   });
 
-  // ── Donut: categorías de gasto reales ─────────────────────────────────────
-  // Usamos todas las categorías frecuentes (no sólo top 3) para el donut.
-  // Cada slice = una categoría con su color del mapa.
   const todasCategorias = historial?.categoriasFrecuentes || [];
   const totalCategorias = todasCategorias.reduce((s, c) => s + c.total, 0) || 1;
 
@@ -387,15 +420,13 @@ export const AnalisisView = () => {
     };
   });
 
-  // Valores y colores para Chart.js
   const donutValues =
-    donutCategorias.length > 0 ? donutCategorias.map((c) => c.total) : [1]; // placeholder vacío mientras carga
+    donutCategorias.length > 0 ? donutCategorias.map((c) => c.total) : [1];
   const donutColors =
     donutCategorias.length > 0
       ? donutCategorias.map((c) => c.color)
       : ["#e5e7eb"];
 
-  // ── Chart: Donut — se crea una vez, se actualiza con datos reales ──────────
   useEffect(() => {
     if (!donutRef.current) return;
     if (donutChart.current) {
@@ -440,7 +471,6 @@ export const AnalisisView = () => {
     };
   }, [historial]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Chart: Línea de tendencias ─────────────────────────────────────────────
   useEffect(() => {
     if (trendChart.current) {
       trendChart.current.destroy();
@@ -497,13 +527,11 @@ export const AnalisisView = () => {
     };
   }, [periodo, historial]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-[#f2f4f7] overflow-x-hidden">
       <AppHeader seccionActiva="analisis" setSeccionActiva={() => {}} />
 
       <div className="analisis-wrap">
-        {/* ── Header con toggle Semanal / Mensual ── */}
         <div className="analisis-header">
           <div>
             <p className="analisis-eyebrow">Resumen</p>
@@ -522,7 +550,6 @@ export const AnalisisView = () => {
           </div>
         </div>
 
-        {/* ── Banners de estado ── */}
         {cargando && (
           <div className="analisis-loading-banner">
             Cargando datos financieros...
@@ -532,9 +559,7 @@ export const AnalisisView = () => {
           <div className="analisis-error-banner">{error}</div>
         )}
 
-        {/* ── Fila superior ── */}
         <div className="analisis-top-row">
-          {/* Gráfica de tendencias */}
           <div className="analisis-card">
             <div className="analisis-chart-header">
               <div>
@@ -582,7 +607,6 @@ export const AnalisisView = () => {
             </div>
           </div>
 
-          {/* Categorías principales */}
           <div className="analisis-card">
             <p className="analisis-cat-title">Categorías Principales</p>
 
@@ -623,7 +647,6 @@ export const AnalisisView = () => {
                 </div>
               ))}
 
-            {/* Botones IA */}
             <div className="analisis-ia-actions">
               <button
                 className="analisis-ia-btn analisis-ia-btn--primary"
@@ -669,9 +692,7 @@ export const AnalisisView = () => {
           </div>
         </div>
 
-        {/* ── Fila inferior ── */}
         <div className="analisis-bottom-row">
-          {/* Meta de Ahorro — restaurada y hardcodeada */}
           <div className="analisis-card">
             <p className="analisis-card-eyebrow">Meta de Ahorro</p>
             <p className="analisis-card-name">Nuevo MacBook</p>
@@ -681,7 +702,6 @@ export const AnalisisView = () => {
             </div>
           </div>
 
-          {/* Flujo neto del período */}
           <div className="analisis-card">
             <p className="analisis-card-eyebrow">Flujo Neto del Período</p>
             <div className="analisis-subs-row">
@@ -702,7 +722,6 @@ export const AnalisisView = () => {
             </p>
           </div>
 
-          {/* Tendencia de gastos */}
           <div className="analisis-card">
             <p className="analisis-card-eyebrow">Tendencia de Gastos</p>
             <div className="analisis-score-row">
@@ -727,7 +746,6 @@ export const AnalisisView = () => {
             </p>
           </div>
 
-          {/* Distribución por categorías — donut real + leyenda dinámica */}
           <div className="analisis-card">
             <p className="analisis-card-eyebrow">Distribución de Gastos</p>
             <div className="analisis-dist-row">
@@ -769,7 +787,11 @@ export const AnalisisView = () => {
       <BottomNav />
 
       {modalModo && (
-        <ModalIA modo={modalModo} onClose={() => setModalModo(null)} />
+        <ModalIA
+          modo={modalModo}
+          onClose={() => setModalModo(null)}
+          historial={historial}
+        />
       )}
     </div>
   );
