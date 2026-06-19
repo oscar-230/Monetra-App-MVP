@@ -4,7 +4,7 @@ import { Chart, registerables } from "chart.js";
 import { AppHeader } from "../../components/layout/AppHeader";
 import { BottomNav } from "../../components/layout/BottomNav";
 import { useFinancialHistory } from "../../hooks/useFinancialHistory";
-import { getFinancialAnalysis, getFinancialRecommendations, getLatestRecommendation } from "../../services/financialAiApi";
+import { getFinancialAnalysis, saveFinancialRecommendations, getLatestRecommendation } from "../../services/financialAiApi";
 import "./AnalisisView.css";
 
 Chart.register(...registerables);
@@ -162,23 +162,22 @@ const generarAnalisis = async () => {
   setEstado("loading");
   setAnalisis("");
   try {
-    const [analisisRes, recomendacionesRes] = await Promise.all([
-      getFinancialAnalysis({
-        movimientos: historial?.movimientos || [],
-        periodo: historial?.periodo || null,
-      }),
-      saveFinancialRecommendations({   // ← ahora guarda en Firestore
-        movimientos: historial?.movimientos || [],
-        periodo: historial?.periodo || null,
-      }),
-    ]);
+    // saveFinancialRecommendations ya genera análisis + recomendaciones en el backend
+    const resultado = await saveFinancialRecommendations({
+      movimientos: historial?.movimientos || [],
+      periodo: historial?.periodo || null,
+    });
 
+    // El resultado tiene data.analisis (análisis) y data.recomendaciones (recomendaciones)
     setAnalisis(
-      formatearAnalisisIA(analisisRes.data || {}, recomendacionesRes.data || {}),
+      formatearAnalisisIA(
+        resultado.data?.analisis || {},
+        resultado.data || {},
+      ),
     );
     setEstado("done");
   } catch (err) {
-    setAnalisis(err.message || "Ocurrió un error al generar el análisis. Intenta de nuevo.");
+    setAnalisis(err.message || "Ocurrió un error al generar el análisis.");
     setEstado("done");
   }
 };
@@ -197,26 +196,24 @@ const ModalIA = ({ modo, onClose, historial }) => {
     getLatestRecommendation()
       .then((registro) => {
         if (!registro) {
-          setAnalisis("Aún no tienes análisis guardados. Genera uno primero con el botón \"Generar análisis con IA\".");
+          setAnalisis("Aún no tienes análisis guardados. Genera uno primero.");
         } else {
           const fecha = registro.creadoEn
             ? new Date(registro.creadoEn).toLocaleDateString("es-CO", {
-                day: "numeric",
-                month: "long",
-                year: "numeric",
+                day: "numeric", month: "long", year: "numeric",
               })
             : "Fecha desconocida";
+          // Lee tanto el análisis anidado como las recomendaciones del data raíz
           setAnalisis(
             `**Análisis guardado — ${fecha}**\n\n` +
-            formatearAnalisisIA({}, registro.data || {})
+            formatearAnalisisIA(
+              registro.data?.analisis || {},  // análisis completo
+              registro.data || {},            // recomendaciones
+            )
           );
         }
         setEstado("done");
       })
-      .catch((err) => {
-        setAnalisis(err.message || "No fue posible cargar el análisis anterior.");
-        setEstado("done");
-      });
   }, [modo]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const generarAnalisis = async () => {

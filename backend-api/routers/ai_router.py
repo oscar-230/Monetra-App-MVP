@@ -80,30 +80,35 @@ async def financial_predictions(request: Request, body: FinancialAIRequest):
  
 @router.post("/recommendations/save")
 async def financial_recommendations_save(request: FinancialAIRequest, http_request: Request):
-    """
-    Genera recomendaciones financieras con IA y las almacena en Firestore
-    asociadas al usuario autenticado.
- 
-    Retorna tanto el resultado generado como la confirmación de almacenamiento.
-    """
     uid = get_authenticated_uid(http_request)
  
     try:
+        # Genera ambos en paralelo
+        analisis_response = await generate_financial_analysis(request)
         recommendation_response = await generate_recommendations(request)
     except Exception as error:
         raise HTTPException(status_code=500, detail=str(error)) from error
  
+    # Combina todo en un solo objeto antes de guardar
+    combined_data = {
+        **recommendation_response,
+        "data": {
+            **(recommendation_response.get("data") or {}),
+            "analisis": analisis_response.get("data") or {},
+        }
+    }
+
     try:
         storage_result = save_recommendation(
             uid,
-            recommendation_response,
+            combined_data,
             periodo=request.periodo,
         )
     except RecommendationStorageError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
  
     return {
-        **recommendation_response,
+        **combined_data,
         "almacenamiento": storage_result,
     }
  
