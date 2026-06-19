@@ -1,38 +1,34 @@
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
+import logging
 
-from firebase_admin import firestore
+logger = logging.getLogger("ai_monitoring")
 
-from services.firebase_service import get_firestore_client
+# Almacenamiento en memoria (se reinicia con cada despliegue del servidor)
+_monitoring_records: List[Dict[str, Any]] = []
+_MAX_RECORDS = 1000  # evita que crezca indefinidamente en memoria
 
 
 def now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-def get_monitoring_collection():
-    db = get_firestore_client()
-    return db.collection("ai_monitoring")
-
-
 def register_ai_request(
     uid: str,
-    tipo: str,                    # "analysis" | "recommendations" | "predictions" | "ocr"
-    modelo: str,                  # "llama-3.1-8b-instant" | "analisis_local" | etc.
+    tipo: str,
+    modelo: str,
     generado_por_llm: bool,
     tiempo_respuesta_ms: int,
-    estado: str,                  # "generado" | "sin_datos" | "generado_con_respaldo"
+    estado: str,
     advertencias: Optional[List[str]] = None,
 ) -> None:
     """
-    Registra en Firestore cada solicitud hecha al servicio de IA.
-    Se llama desde ai_router después de cada respuesta exitosa.
+    Registra la solicitud en memoria y en logs.
+    NO escribe en Firestore para evitar saturar la cuota gratuita.
     Es silencioso — nunca interrumpe el flujo principal si falla.
     """
     try:
-        collection_ref = get_monitoring_collection()
-
-        document_data = {
+        record = {
             "uid": uid,
             "tipo": tipo,
             "modelo": modelo,
@@ -41,13 +37,21 @@ def register_ai_request(
             "estado": estado,
             "advertencias": advertencias or [],
             "fecha": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
-            "creadoEn": firestore.SERVER_TIMESTAMP,
+            "creadoEn": now_iso(),
         }
 
-        collection_ref.document().set(document_data)
+        _monitoring_records.append(record)
+
+        # Mantener solo los últimos N registros en memoria
+        if len(_monitoring_records) > _MAX_RECORDS:
+            _monitoring_records.pop(0)
+
+        logger.info(
+            f"AI request | uid={uid} tipo={tipo} modelo={modelo} "
+            f"llm={generado_por_llm} tiempo={tiempo_respuesta_ms}ms estado={estado}"
+        )
 
     except Exception:
-        # El monitoreo nunca debe romper el flujo principal
         pass
 
 
@@ -57,19 +61,11 @@ def get_monitoring_stats(
     limit_value: int = 500,
 ) -> Dict[str, Any]:
     """
-    Consulta métricas de uso del servicio de IA.
-    Para el administrador vía GET /api/monitoring/stats
+    Calcula métricas a partir de los registros en memoria.
+    Se reinician cada vez que el servidor se reinicia.
     """
-    collection_ref = get_monitoring_collection()
+    records = list(_monitoring_records)[-limit_value:]
 
-    query = collection_ref.order_by(
-        "creadoEn", direction=firestore.Query.DESCENDING
-    ).limit(limit_value)
-
-    documents = list(query.stream())
-    records = [doc.to_dict() for doc in documents]
-
-    # Filtrar por fecha si se especifica
     if fecha_inicio:
         records = [r for r in records if r.get("fecha", "") >= fecha_inicio]
     if fecha_fin:
@@ -97,14 +93,12 @@ def get_monitoring_stats(
 
         if tiempo:
             tiempos.append(tiempo)
-
         if record.get("generadoPorLLM"):
             llm_count += 1
 
     promedio_ms = round(sum(tiempos) / len(tiempos)) if tiempos else 0
     max_ms = max(tiempos) if tiempos else 0
 
-    # Detectar días con consumo anormal (más del doble del promedio diario)
     promedio_diario = total / max(len(por_dia), 1)
     dias_anomalos = [
         {"fecha": fecha, "solicitudes": count}
@@ -113,18 +107,12 @@ def get_monitoring_stats(
     ]
 
     return {
-        "periodo": {
-            "fechaInicio": fecha_inicio,
-            "fechaFin": fecha_fin,
-        },
+        "periodo": {"fechaInicio": fecha_inicio, "fechaFin": fecha_fin},
         "totalSolicitudes": total,
         "solicitudesLLM": llm_count,
         "solicitudesRespaldoLocal": total - llm_count,
         "porcentajeUsoLLM": round((llm_count / total) * 100, 2) if total else 0,
-        "tiempoRespuestaMs": {
-            "promedio": promedio_ms,
-            "maximo": max_ms,
-        },
+        "tiempoRespuestaMs": {"promedio": promedio_ms, "maximo": max_ms},
         "porTipo": por_tipo,
         "porModelo": por_modelo,
         "porEstado": por_estado,
@@ -133,5 +121,6 @@ def get_monitoring_stats(
             "diasConConsumoAnormal": dias_anomalos,
             "hayIncremento": len(dias_anomalos) > 0,
         },
+        "nota": "Métricas en memoria, se reinician al reiniciar el servidor.",
         "generadoEn": now_iso(),
     }
