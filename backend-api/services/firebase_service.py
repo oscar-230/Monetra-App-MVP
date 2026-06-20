@@ -79,7 +79,9 @@ def get_authenticated_uid(request: Request) -> str:
 
     try:
         initialize_firebase_app()
+        print(f"TOKEN RECIBIDO: {token[:30]}...")  # ← agrega esto
         decoded_token = auth.verify_id_token(token)
+        print(f"UID DECODIFICADO: {decoded_token.get('uid')}")  # ← y esto
         uid = decoded_token.get("uid")
 
         if not uid:
@@ -92,6 +94,7 @@ def get_authenticated_uid(request: Request) -> str:
     except HTTPException:
         raise
     except Exception as error:
+        print(f"ERROR VERIFICANDO TOKEN: {error}")  # ← y esto
         raise HTTPException(
             status_code=401,
             detail="Token Firebase inválido o expirado.",

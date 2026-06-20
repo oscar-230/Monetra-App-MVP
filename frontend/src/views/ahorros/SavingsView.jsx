@@ -1,178 +1,93 @@
+// src/views/ahorros/SavingsView.jsx
 import { useState } from 'react';
 import { AppHeader } from '../../components/layout/AppHeader';
 import { BottomNav } from '../../components/layout/BottomNav';
+import { useSavings } from '../../hooks/useSavings'; 
 import './SavingsView.css';
 
 export const SavingsView = () => {
   const [seccionActiva, setSeccionActiva] = useState('ahorros');
   const [showGoalModal, setShowGoalModal] = useState(false);
-  const [goalForm, setGoalForm] = useState({
-    nombre: '',
-    monto: '',
-    fechaEstimada: ''
-  });
-  const [savingsGoals, setSavingsGoals] = useState([
-    {
-      id: 1,
-      nombre: 'Computador',
-      montoObjetivo: 1800000,
-      montoActual: 900000,
-      fechaEstimada: '2024-12-31'
-    }
-  ]);
+  const [goalForm, setGoalForm] = useState({ nombre: '', monto: '', fechaEstimada: '' });
+  
   const [showTransactionModal, setShowTransactionModal] = useState(false);
-  const [transactionType, setTransactionType] = useState('deposit'); // 'deposit' or 'withdraw'
   const [selectedGoalId, setSelectedGoalId] = useState(null);
+  const [selectedGoalNombre, setSelectedGoalNombre] = useState('');
   const [transactionAmount, setTransactionAmount] = useState('');
 
-  const challenges = [
-    {
-      id: 1,
-      title: 'Semana sin café',
-      icon: (
-        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
-        </svg>
-      ),
-      status: 'En progreso',
-      statusColor: 'green',
-      description: 'Deja de comprar café comercial por 7 días. Ahorro estimado: $75.000',
-    },
-    {
-      id: 2,
-      title: 'Ahorro hormiga',
-      icon: (
-        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
-        </svg>
-      ),
-      status: 'Empieza mañana',
-      statusColor: 'gray',
-      description: 'Redondea cada compra al siguiente peso y ahorra la diferencia durante un mes.',
-      hasButton: true,
-    },
-    {
-      id: 3,
-      title: 'Insignia de Mejor Ahorrador',
-      icon: (
-        <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
-          <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-        </svg>
-      ),
-      isBadge: true,
-      description: '¡Estás entre el 5% de los mejores ahorradores de esta semana!',
-      points: '+500 pts',
-    },
-  ];
+  // Consumo del Hook real sincronizado mediante Fetch
+  const { progresos, resumen, loading, addGoal, saveAbono } = useSavings();
 
-  const recommendations = [
-    {
-      id: 1,
-      title: 'Suscripciones sin uso',
-      icon: (
-        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-        </svg>
-      ),
-      description: 'Notamos que no has usado Netflix en 3 meses.',
-      savings: 'Ahorro $50.000',
-    },
-    {
-      id: 2,
-      title: 'Ahorro en transporte',
-      icon: (
-        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-        </svg>
-      ),
-      description: 'Usar transporte alternativo dos veces por semana podría disminuir tus gastos mensuales.',
-      savings: 'Ahorro $22.000',
-    },
-    {
-      id: 3,
-      title: 'Análisis de gastos en restaurantes',
-      icon: (
-        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
-        </svg>
-      ),
-      description: 'Reemplazar dos comidas en restaurante por comidas preparadas en casa puede generar un ahorro significativo.',
-      savings: 'Ahorro $80.000',
-    },
-  ];
+  // Genera el historial dinámico mapeando los ahorros actuales
+  const historialAbonos = progresos.reduce((acc, goal) => {
+    if (goal.montoActual > 0) {
+      acc.push({
+        id: `log-${goal.id}`,
+        metaNombre: goal.nombre,
+        monto: goal.montoActual, 
+        fecha: new Date().toLocaleDateString('es-CO'),
+        tipo: 'Abono Exitoso'
+      });
+    }
+    return acc;
+  }, []);
 
   const handleGoalFormChange = (e) => {
     const { name, value } = e.target;
-    setGoalForm(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    setGoalForm(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleGoalSubmit = (e) => {
+  const handleGoalSubmit = async (e) => {
     e.preventDefault();
-    const newGoal = {
-      id: Date.now(),
-      nombre: goalForm.nombre,
-      montoObjetivo: parseInt(goalForm.monto),
-      montoActual: 0,
-      fechaEstimada: goalForm.fechaEstimada
-    };
-    setSavingsGoals(prev => [...prev, newGoal]);
-    setShowGoalModal(false);
-    setGoalForm({ nombre: '', monto: '', fechaEstimada: '' });
+    const res = await addGoal(goalForm);
+    if (res?.exito) {
+      setShowGoalModal(false);
+      setGoalForm({ nombre: '', monto: '', fechaEstimada: '' });
+    }
   };
 
-  const handleGoalCancel = () => {
-    setShowGoalModal(false);
-    setGoalForm({ nombre: '', monto: '', fechaEstimada: '' });
-  };
-
-  const formatCurrency = (amount) => {
-    return '$' + amount.toLocaleString('es-CO');
-  };
-
-  const getLatestGoal = () => {
-    if (savingsGoals.length === 0) return null;
-    return savingsGoals[savingsGoals.length - 1];
-  };
-
-  const calculateProgress = (goal) => {
-    if (!goal || goal.montoObjetivo === 0) return 0;
-    return Math.round((goal.montoActual / goal.montoObjetivo) * 100);
-  };
-
-  const handleOpenTransactionModal = (goalId, type) => {
+  const handleOpenTransactionModal = (goalId, goalNombre) => {
     setSelectedGoalId(goalId);
-    setTransactionType(type);
+    setSelectedGoalNombre(goalNombre);
     setTransactionAmount('');
     setShowTransactionModal(true);
   };
 
-  const handleTransactionSubmit = (e) => {
+  const handleTransactionSubmit = async (e) => {
     e.preventDefault();
-    const amount = parseInt(transactionAmount);
-    if (!amount || amount <= 0) return;
+    
+    const montoNumerico = parseFloat(transactionAmount);
+    if (isNaN(montoNumerico) || montoNumerico <= 0) {
+      alert("Por favor, ingresa un monto válido.");
+      return;
+    }
 
-    setSavingsGoals(prev => prev.map(goal => {
-      if (goal.id === selectedGoalId) {
-        const newAmount = transactionType === 'deposit'
-          ? goal.montoActual + amount
-          : Math.max(0, goal.montoActual - amount);
-        return { ...goal, montoActual: newAmount };
+    const res = await saveAbono(selectedGoalId, montoNumerico);
+    if (res?.exito) {
+      // ACTUALIZACIÓN OPTIMISTA LOCAL:
+      // Modifica el estado en caliente para que la barra se desplace inmediatamente 
+      // en la UI sin esperar el delay de red o indexación de Firestore.
+      if (progresos && progresos.length > 0) {
+        const metaIndex = progresos.findIndex(g => g.id === selectedGoalId);
+        if (metaIndex !== -1) {
+          const meta = progresos[metaIndex];
+          const nuevoMonto = (meta.montoActual || 0) + montoNumerico;
+          const maxTarget = meta.monto_objetivo || meta.montoTarget || meta.montoObjetivo || 1;
+          
+          meta.montoActual = nuevoMonto;
+          meta.porcentajeAvance = (nuevoMonto / maxTarget) * 100;
+        }
       }
-      return goal;
-    }));
 
-    setShowTransactionModal(false);
-    setTransactionAmount('');
-    setSelectedGoalId(null);
+      setShowTransactionModal(false);
+      setTransactionAmount('');
+    } else {
+      alert("Hubo un problema al registrar el abono en el servidor.");
+    }
   };
 
-  const handleTransactionCancel = () => {
-    setShowTransactionModal(false);
-    setTransactionAmount('');
-    setSelectedGoalId(null);
+  const formatCurrency = (amount) => {
+    return '$' + (amount || 0).toLocaleString('es-CO', { maximumFractionDigits: 0 });
   };
 
   return (
@@ -180,246 +95,170 @@ export const SavingsView = () => {
       <AppHeader seccionActiva={seccionActiva} setSeccionActiva={setSeccionActiva} />
 
       <main className="savings-main">
-        {/* Savings Overview Card */}
-        <div className="savings-overview-card">
-          <div className="savings-overview-content">
-            <p className="savings-overview-label">Ahorros este mes</p>
-            <p className="savings-overview-amount">$200.000</p>
-            <p className="savings-overview-comparison">12% más que el mes pasado</p>
+        {loading && <div className="loading-bar-pulse">Sincronizando con Monetra...</div>}
+
+        {/* Tarjeta de Ahorros Totales */}
+        <div className="savings-overview-card-unified">
+          <div className="savings-monthly-panel">
+            <p className="savings-monthly-label">Ahorros totales acumulados</p>
+            <p className="savings-monthly-amount">
+              {formatCurrency(progresos.reduce((sum, g) => sum + (g.montoActual || 0), 0))}
+            </p>
+            <div className="savings-monthly-badge">
+              Resumen de avance: {resumen ? `${resumen.promedioAvanceGeneral || 0}%` : '0%'}
+            </div>
           </div>
-          {(() => {
-            const latestGoal = getLatestGoal();
-            if (!latestGoal) return null;
-            const progress = calculateProgress(latestGoal);
-            return (
-              <div className="savings-goal-progress">
-                <p className="savings-goal-label">Meta: {latestGoal.nombre}</p>
-                <p className="savings-goal-amount">{formatCurrency(latestGoal.montoActual)} / {formatCurrency(latestGoal.montoObjetivo)}</p>
-                <div className="savings-progress-bar">
-                  <div className="savings-progress-fill" style={{ width: `${progress}%` }} />
-                </div>
-                <p className="savings-progress-text">{progress}% completado</p>
-                <div className="savings-goal-actions">
-                  <button
-                    className="savings-goal-action-btn deposit"
-                    onClick={() => handleOpenTransactionModal(latestGoal.id, 'deposit')}
-                  >
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                    </svg>
-                    Añadir
-                  </button>
-                  <button
-                    className="savings-goal-action-btn withdraw"
-                    onClick={() => handleOpenTransactionModal(latestGoal.id, 'withdraw')}
-                  >
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
-                    </svg>
-                    Retirar
-                  </button>
-                </div>
-              </div>
-            );
-          })()}
         </div>
 
-        {/* Active Challenges Section */}
-        <div className="savings-section">
+        {/* SECCIÓN: Objetivos de Ahorro con Slider Horizontal */}
+        <section className="savings-section">
           <div className="savings-section-header">
-            <h3 className="savings-section-title">Retos activos</h3>
-            <button className="savings-section-link">Ver todo →</button>
+            <h2 className="savings-section-title">Tus objetivos de ahorro ({progresos.length})</h2>
           </div>
-          <div className="challenges-list">
-            {challenges.map((challenge) => (
-              <div key={challenge.id} className="challenge-card">
-                <div className="challenge-icon-wrapper">
-                  {challenge.icon}
-                </div>
-                <div className="challenge-content">
-                  <div className="challenge-header">
-                    <h4 className="challenge-title">{challenge.title}</h4>
-                    {challenge.status && (
-                      <span className={`challenge-status ${challenge.statusColor}`}>
-                        {challenge.status}
+          
+          <div className="savings-goals-slider">
+            {progresos.length > 0 ? (
+              progresos.map((goal) => (
+                <div 
+                  key={goal.id} 
+                  className="savings-featured-goal-card"
+                  onClick={() => handleOpenTransactionModal(goal.id, goal.nombre)}
+                  title="Haz clic para abonar a esta meta"
+                >
+                  <div className="featured-goal-header">
+                    <span className="featured-goal-title">Meta: {goal.nombre}</span>
+                    <span className="featured-goal-action-indicator">+ Abonar</span>
+                  </div>
+
+                  <div className="featured-goal-progress-row">
+                    <div className="featured-progress-bar-wrapper">
+                      <div 
+                        className="featured-progress-bar-fill" 
+                        style={{ width: `${Math.min(goal.porcentajeAvance || 0, 100)}%` }}
+                      />
+                    </div>
+                    <span className="featured-progress-percentage-text">
+                      {Math.round(goal.porcentajeAvance || 0)}%
+                    </span>
+                  </div>
+
+                  <div className="featured-goal-footer">
+                    <span className="featured-goal-amounts">
+                      {formatCurrency(goal.montoActual)} / {formatCurrency(goal.monto_objetivo || goal.montoTarget || goal.montoObjetivo)}
+                    </span>
+                    {goal.enCamino && (
+                      <span className="featured-goal-prediction">
+                        {goal.enCamino.descripcion}
                       </span>
                     )}
                   </div>
-                  <p className="challenge-description">{challenge.description}</p>
-                  {challenge.hasButton && (
-                    <button className="challenge-join-btn">Unirme al reto</button>
-                  )}
-                  {challenge.isBadge && (
-                    <div className="challenge-badge-points">
-                      <span>{challenge.points}</span>
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                      </svg>
-                    </div>
-                  )}
                 </div>
+              ))
+            ) : (
+              <div className="savings-featured-goal-card empty" onClick={() => setShowGoalModal(true)}>
+                <p>No tienes metas activas. Haz clic en el botón de abajo para fijar tu primer objetivo financiero.</p>
               </div>
-            ))}
+            )}
           </div>
-        </div>
+        </section>
 
-        {/* Personal Recommendations Section */}
-        <div className="savings-section">
-          <h3 className="savings-section-title">Recomendaciones personales</h3>
-          <div className="recommendations-list">
-            {recommendations.map((rec) => (
-              <div key={rec.id} className="recommendation-item">
-                <div className="recommendation-icon-wrapper">
-                  {rec.icon}
+        {/* SECCIÓN: Historial de Ahorros */}
+        <section className="savings-section">
+          <div className="savings-section-header">
+            <h2 className="savings-section-title">Ultimo abono</h2>
+          </div>
+
+          <div className="savings-history-list">
+            {historialAbonos.length > 0 ? (
+              historialAbonos.map((item) => (
+                <div key={item.id} className="history-item">
+                  <div className="history-icon-wrapper">💰</div>
+                  <div className="history-content">
+                    <h3 className="history-title">Abono a {item.metaNombre}</h3>
+                    <p className="history-date">{item.fecha} • {item.tipo}</p>
+                  </div>
+                  <div className="history-amount-positive">
+                    +{formatCurrency(item.monto)}
+                  </div>
                 </div>
-                <div className="recommendation-content">
-                  <h4 className="recommendation-title">{rec.title}</h4>
-                  <p className="recommendation-description">{rec.description}</p>
-                </div>
-                <div className="recommendation-savings">
-                  <span className="recommendation-savings-amount">{rec.savings}</span>
-                  <button className="recommendation-menu-btn">
-                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
-                    </svg>
-                  </button>
-                </div>
+              ))
+            ) : (
+              <div className="history-empty-state">
+                No se registran movimientos recientes de ahorro en tu cuenta.
               </div>
-            ))}
+            )}
           </div>
-        </div>
+        </section>
 
-        {/* Create New Goal Card */}
-        <div className="create-goal-card" onClick={() => setShowGoalModal(true)}>
-          <div className="create-goal-icon">
-            <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-          </div>
-          <div className="create-goal-content">
-            <h4 className="create-goal-title">Crear un nuevo objetivo financiero</h4>
-            <p className="create-goal-description">
-              Fíjate una meta para tu próxima compra importante y deja que Monetra te ayude a alcanzarla más rápido.
-            </p>
-          </div>
+        {/* Tarjeta Punteada de Acción */}
+        <div className="create-goal-dashed-card" onClick={() => setShowGoalModal(true)}>
+          <div className="create-goal-dashed-icon">+</div>
+          <h3 className="create-goal-dashed-title">Crear un nuevo objetivo financiero</h3>
+          <p className="create-goal-dashed-description">
+            Fíjate una meta para tu próxima compra importante y deja que Monetra te ayude a organizarla.
+          </p>
         </div>
       </main>
 
-      {/* Goal Modal */}
+      {/* MODAL CREAR META */}
       {showGoalModal && (
         <div className="goal-modal-overlay">
           <div className="goal-modal">
             <div className="goal-modal-header">
-              <h3 className="goal-modal-title">Crear nueva meta de ahorro</h3>
-              <button
-                className="goal-modal-close"
-                onClick={handleGoalCancel}
-              >
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
+              <h3 className="goal-modal-title">Nuevo Objetivo Financiero</h3>
+              <button className="goal-modal-close" onClick={() => setShowGoalModal(false)}>✕</button>
             </div>
             <form onSubmit={handleGoalSubmit} className="goal-modal-form">
               <div className="goal-form-group">
-                <label className="goal-form-label">Nombre de la meta</label>
-                <input
-                  type="text"
-                  name="nombre"
-                  value={goalForm.nombre}
-                  onChange={handleGoalFormChange}
-                  placeholder="Ej: Viaje a la playa"
-                  className="goal-form-input"
-                  required
+                <label className="goal-form-label">Nombre del objetivo</label>
+                <input 
+                  type="text" name="nombre" value={goalForm.nombre} onChange={handleGoalFormChange}
+                  placeholder="Ej. Computador, Viaje, Moto" className="goal-form-input" required 
                 />
               </div>
               <div className="goal-form-group">
-                <label className="goal-form-label">Monto objetivo</label>
-                <input
-                  type="number"
-                  name="monto"
-                  value={goalForm.monto}
-                  onChange={handleGoalFormChange}
-                  placeholder="Ej: 500000"
-                  className="goal-form-input"
-                  required
+                <label className="goal-form-label">Monto objetivo (COP)</label>
+                <input 
+                  type="number" name="monto" value={goalForm.monto} onChange={handleGoalFormChange}
+                  placeholder="Ej. 1800000" className="goal-form-input" required 
                 />
               </div>
               <div className="goal-form-group">
-                <label className="goal-form-label">Fecha estimada</label>
-                <input
-                  type="date"
-                  name="fechaEstimada"
-                  value={goalForm.fechaEstimada}
-                  onChange={handleGoalFormChange}
-                  className="goal-form-input"
-                  required
+                <label className="goal-form-label">Fecha estimada para cumplirlo</label>
+                <input 
+                  type="date" name="fechaEstimada" value={goalForm.fechaEstimada} onChange={handleGoalFormChange}
+                  className="goal-form-input" required 
                 />
               </div>
               <div className="goal-modal-actions">
-                <button
-                  type="button"
-                  onClick={handleGoalCancel}
-                  className="goal-modal-btn goal-modal-btn-cancel"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  className="goal-modal-btn goal-modal-btn-submit"
-                >
-                  Crear meta
-                </button>
+                <button type="button" className="goal-modal-btn goal-modal-btn-cancel" onClick={() => setShowGoalModal(false)}>Cancelar</button>
+                <button type="submit" className="goal-modal-btn goal-modal-btn-submit">Crear Meta</button>
               </div>
             </form>
           </div>
         </div>
       )}
 
-      {/* Transaction Modal */}
+      {/* MODAL REGISTRAR ABONO */}
       {showTransactionModal && (
         <div className="goal-modal-overlay">
           <div className="goal-modal">
             <div className="goal-modal-header">
-              <h3 className="goal-modal-title">
-                {transactionType === 'deposit' ? 'Añadir dinero a la meta' : 'Retirar dinero de la meta'}
-              </h3>
-              <button
-                className="goal-modal-close"
-                onClick={handleTransactionCancel}
-              >
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
+              <h3 className="goal-modal-title">Registrar Abono a "{selectedGoalNombre}"</h3>
+              <button className="goal-modal-close" onClick={() => setShowTransactionModal(false)}>✕</button>
             </div>
             <form onSubmit={handleTransactionSubmit} className="goal-modal-form">
               <div className="goal-form-group">
-                <label className="goal-form-label">Monto</label>
-                <input
-                  type="number"
-                  value={transactionAmount}
-                  onChange={(e) => setTransactionAmount(e.target.value)}
-                  placeholder="Ej: 50000"
-                  className="goal-form-input"
-                  required
-                  min="1"
+                <label className="goal-form-label">Monto a depositar (COP)</label>
+                <input 
+                  type="number" value={transactionAmount} onChange={(e) => setTransactionAmount(e.target.value)}
+                  placeholder="Ej. 50000" className="goal-form-input" required 
+                  autoFocus
                 />
               </div>
               <div className="goal-modal-actions">
-                <button
-                  type="button"
-                  onClick={handleTransactionCancel}
-                  className="goal-modal-btn goal-modal-btn-cancel"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  className="goal-modal-btn goal-modal-btn-submit"
-                >
-                  {transactionType === 'deposit' ? 'Añadir' : 'Retirar'}
-                </button>
+                <button type="button" className="goal-modal-btn goal-modal-btn-cancel" onClick={() => setShowTransactionModal(false)}>Cancelar</button>
+                <button type="submit" className="goal-modal-btn goal-modal-btn-submit">Confirmar Abono</button>
               </div>
             </form>
           </div>

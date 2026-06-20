@@ -1,12 +1,4 @@
 // src/test/Registro.test.jsx
-// Pruebas del formulario de registro de gastos:
-// - Renderiza todos los elementos del formulario
-// - Validación: bloquea guardar con monto vacío o inválido
-// - Validación: acepta montos decimales correctos
-// - Selección de categoría cambia el estado activo
-// - Toggle de "adjuntar foto" cambia de estado
-// - Flujo feliz: monto válido navega al dashboard
-// - El botón "Monetra" regresa al dashboard
 
 import { describe, it, expect, vi } from 'vitest';
 import { screen, fireEvent, waitFor } from '@testing-library/react';
@@ -18,6 +10,10 @@ vi.mock('react-router-dom', async (importOriginal) => {
   const real = await importOriginal();
   return { ...real, useNavigate: () => mockNavigate };
 });
+
+vi.mock('../services/movementApi', () => ({
+  createMovement: vi.fn().mockResolvedValue({}),
+}));
 
 const renderRegistro = () =>
   renderWithProviders(<Registro />);
@@ -34,14 +30,14 @@ describe('Registro — renderizado', () => {
     expect(screen.getByPlaceholderText('0.00')).toBeInTheDocument();
   });
 
-  it('muestra las 6 categorías', () => {
+  it('muestra las 6 categorías de gasto por defecto', () => {
     renderRegistro();
     expect(screen.getByText('Comida')).toBeInTheDocument();
     expect(screen.getByText('Transporte')).toBeInTheDocument();
     expect(screen.getByText('Diversión')).toBeInTheDocument();
     expect(screen.getByText('Salud')).toBeInTheDocument();
     expect(screen.getByText('Compras')).toBeInTheDocument();
-    expect(screen.getByText('Otros')).toBeInTheDocument();
+    expect(screen.getAllByText('Otros').length).toBeGreaterThan(0);
   });
 
   it('muestra el botón "Guardar gasto"', () => {
@@ -51,9 +47,14 @@ describe('Registro — renderizado', () => {
     ).toBeInTheDocument();
   });
 
-  it('muestra el toggle "Adjuntar foto"', () => {
+  it('muestra los botones de tipo de movimiento', () => {
     renderRegistro();
-    expect(screen.getByRole('switch', { name: /adjuntar foto/i })).toBeInTheDocument();
+    const botonesGasto = screen.getAllByRole('button', { name: /gasto/i });
+    const toggleGasto = botonesGasto.find((button) =>
+      button.className.includes('rg-type-btn')
+    );
+    expect(toggleGasto).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /ingreso/i })).toBeInTheDocument();
   });
 });
 
@@ -74,8 +75,6 @@ describe('Registro — validación del monto', () => {
 
   it('muestra error si el monto es negativo', () => {
     renderRegistro();
-    // El handler filtra no-numéricos, -5 queda como '5' → pero probamos con ''
-    // para verificar la guarda principal
     fireEvent.change(screen.getByPlaceholderText('0.00'), { target: { value: '' } });
     fireEvent.click(screen.getByRole('button', { name: /guardar gasto/i }));
     expect(screen.getByText(/ingresa un monto válido/i)).toBeInTheDocument();
@@ -98,9 +97,7 @@ describe('Registro — validación del monto', () => {
   it('no permite más de un punto decimal', () => {
     renderRegistro();
     const input = screen.getByPlaceholderText('0.00');
-    // Primer cambio válido
     fireEvent.change(input, { target: { value: '3.5' } });
-    // Segundo cambio con dos puntos — el handler lo rechaza
     fireEvent.change(input, { target: { value: '3.2.5' } });
     expect((input.value.match(/\./g) || []).length).toBeLessThanOrEqual(1);
   });
@@ -108,13 +105,13 @@ describe('Registro — validación del monto', () => {
 
 // ─────────────────────────────────────────────────────────────────────────
 describe('Registro — flujo feliz', () => {
-  it('navega a /dashboard con un monto válido', async () => {
+  it('navega a /movimientos con un monto válido', async () => {
     mockNavigate.mockClear();
     renderRegistro();
     fireEvent.change(screen.getByPlaceholderText('0.00'), { target: { value: '15000' } });
     fireEvent.click(screen.getByRole('button', { name: /guardar gasto/i }));
     await waitFor(() => {
-      expect(mockNavigate).toHaveBeenCalledWith('/dashboard');
+      expect(mockNavigate).toHaveBeenCalledWith('/movimientos');
     });
   });
 
@@ -152,26 +149,36 @@ describe('Registro — selección de categoría', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────
-describe('Registro — toggle de foto', () => {
-  it('empieza en estado apagado (aria-checked="false")', () => {
+describe('Registro — selector de tipo de movimiento', () => {
+  it('el botón "Gasto" está activo por defecto', () => {
     renderRegistro();
-    expect(screen.getByRole('switch', { name: /adjuntar foto/i }))
-      .toHaveAttribute('aria-checked', 'false');
+    const botonesGasto = screen.getAllByRole('button', { name: /gasto/i });
+    const gastoBtn = botonesGasto.find((button) =>
+      button.className.includes('rg-type-btn')
+    );
+    expect(gastoBtn.className).toContain('rg-type-btn--active');
   });
 
-  it('se activa al hacer clic', () => {
+  it('cambia a ingreso al hacer clic en el botón "Ingreso"', async () => {
     renderRegistro();
-    fireEvent.click(screen.getByRole('switch', { name: /adjuntar foto/i }));
-    expect(screen.getByRole('switch', { name: /adjuntar foto/i }))
-      .toHaveAttribute('aria-checked', 'true');
+    // Buscar el botón de ingreso dentro del toggle (no el de categoría)
+    const botonesIngreso = screen.getAllByRole('button', { name: /ingreso/i });
+    // El botón del tipo-toggle tiene clase rg-type-btn
+    const toggleIngreso = botonesIngreso.find(b => b.className.includes('rg-type-btn'));
+    fireEvent.click(toggleIngreso);
+    await waitFor(() => {
+      expect(screen.getByText('Nuevo ingreso')).toBeInTheDocument();
+    });
   });
 
-  it('vuelve a apagarse al hacer clic de nuevo', () => {
+  it('muestra categorías de ingreso al seleccionar ese tipo', async () => {
     renderRegistro();
-    const toggle = screen.getByRole('switch', { name: /adjuntar foto/i });
-    fireEvent.click(toggle);
-    fireEvent.click(toggle);
-    expect(toggle).toHaveAttribute('aria-checked', 'false');
+    const botonesIngreso = screen.getAllByRole('button', { name: /ingreso/i });
+    const toggleIngreso = botonesIngreso.find(b => b.className.includes('rg-type-btn'));
+    fireEvent.click(toggleIngreso);
+    await waitFor(() => {
+      expect(screen.getByText('Sueldo')).toBeInTheDocument();
+    });
   });
 });
 
