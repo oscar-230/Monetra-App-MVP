@@ -132,18 +132,23 @@ const formatearAnalisisIA = (analisisData = {}, recomendacionesData = {}) => {
     partes.push(`**Resumen**\n\n${analisisData.resumenEjecutivo}`);
   }
 
-  if (analisisData.patronesDetectados?.length) {
-    const items = analisisData.patronesDetectados
-      .map((p) => `• ${p.titulo}: ${p.descripcion}`)
+  const patrones = analisisData.hallazgos ?? analisisData.patronesDetectados ?? [];
+  if (patrones.length) {
+    const items = patrones
+      .map((p) => `• ${p.titulo}: ${p.descripcion ?? p.evidencia ?? ""}`)
       .join("\n");
     partes.push(`**Lo que notamos**\n\n${items}`);
   }
 
   if (recomendacionesData.recomendaciones?.length) {
     const items = recomendacionesData.recomendaciones
-      .map((r) => `• ${r.titulo}: ${r.accionSugerida}`)
+      .map((r) => `• ${r.titulo}: ${r.quéHacer ?? r.accionSugerida ?? "Ver recomendación completa"}`)
       .join("\n");
     partes.push(`**Consejos para ti**\n\n${items}`);
+  }
+
+  if (analisisData.diagnostico?.descripcion) {
+    partes.push(`**Diagnóstico**\n\n${analisisData.diagnostico.descripcion}`);
   }
 
   const mensajeFinal =
