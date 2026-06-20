@@ -72,6 +72,12 @@
   box-sizing: border-box;
 }
 
+/* Variante con más aire interno para tarjetas con contenido grande
+   (Flujo Neto del Período, Tendencia de Gastos) */
+.analisis-card--roomy {
+  padding: 20px;
+}
+
 /* ---- Top row ---- */
 .analisis-top-row {
   display: grid;
@@ -238,7 +244,7 @@
 }
 
 .analisis-trend-desc {
-  font-size: 12px;
+  font-size: 13px;
   color: #6B7280;
   line-height: 1.5;
   margin: 0;
@@ -296,7 +302,7 @@
 /* ---- Bottom row ---- */
 .analisis-bottom-row {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: 0.85fr 1.15fr 1.15fr 0.85fr;
   gap: 12px;
 }
 
@@ -307,6 +313,107 @@
   color: #9CA3AF;
   font-weight: 600;
   margin: 0 0 6px;
+}
+
+/* Header de la card de Meta de Ahorro: eyebrow + selector de tres puntos */
+.analisis-goal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.analisis-goal-header .analisis-card-eyebrow {
+  margin: 0;
+}
+
+/* Selector de meta — mismo patrón que DashboardView */
+.meta-selector {
+  position: relative;
+}
+
+.meta-selector-btn {
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #9CA3AF;
+  flex-shrink: 0;
+  margin-top: -4px;
+  transition: background 0.15s, color 0.15s;
+}
+
+.meta-selector-btn:hover {
+  background: #F3F4F6;
+  color: #4B5563;
+}
+
+.meta-selector-btn svg {
+  width: 15px;
+  height: 15px;
+}
+
+.meta-dropdown-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 4px);
+  min-width: 170px;
+  max-height: 200px;
+  overflow-y: auto;
+  border-radius: 10px;
+  background: #fff;
+  border: 1px solid #F3F4F6;
+  box-shadow: 0 16px 30px rgba(0, 0, 0, 0.12);
+  padding: 5px;
+  z-index: 40;
+}
+
+.meta-dropdown-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 7px 9px;
+  border-radius: 7px;
+  font-size: 12px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #374151;
+  text-align: left;
+  transition: background 0.15s;
+}
+
+.meta-dropdown-item:hover {
+  background: #F9FAFB;
+}
+
+.meta-dropdown-item.active {
+  background: #F0FAF4;
+  color: #1A7A4A;
+  font-weight: 600;
+}
+
+.meta-dropdown-item-name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.meta-dropdown-item-pct {
+  flex-shrink: 0;
+  font-size: 11px;
+  color: #9CA3AF;
+}
+
+.meta-dropdown-item.active .meta-dropdown-item-pct {
+  color: #1A7A4A;
 }
 
 .analisis-card-name {
@@ -341,32 +448,32 @@
 .analisis-subs-row {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 4px;
+  gap: 10px;
+  margin-bottom: 8px;
 }
 
 .analisis-subs-icon {
-  width: 32px;
-  height: 32px;
+  width: 42px;
+  height: 42px;
   background: #FEF3F2;
-  border-radius: 8px;
+  border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 16px;
+  font-size: 20px;
   flex-shrink: 0;
 }
 
 .analisis-subs-count {
-  font-size: 14px;
-  font-weight: 600;
+  font-size: 19px;
+  font-weight: 700;
   color: #111827;
   margin: 0;
 }
 
 .analisis-subs-amount {
-  font-size: 12px;
-  font-weight: 500;
+  font-size: 17px;
+  font-weight: 600;
   color: #E24B4A;
   margin: 0;
 }
@@ -375,24 +482,24 @@
 .analisis-score-row {
   display: flex;
   align-items: baseline;
-  gap: 8px;
-  margin-bottom: 8px;
+  gap: 10px;
+  margin-bottom: 10px;
 }
 
 .analisis-score-num {
-  font-size: 22px;
+  font-size: 32px;
   font-weight: 700;
   color: #111827;
   margin: 0;
 }
 
 .analisis-score-badge {
-  font-size: 10px;
+  font-size: 13px;
   font-weight: 600;
   background: #EAF3DE;
   color: #3B6D11;
-  padding: 2px 7px;
-  border-radius: 6px;
+  padding: 4px 10px;
+  border-radius: 7px;
 }
 
 .analisis-score-bar {

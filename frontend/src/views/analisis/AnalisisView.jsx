@@ -4,7 +4,12 @@ import { Chart, registerables } from "chart.js";
 import { AppHeader } from "../../components/layout/AppHeader";
 import { BottomNav } from "../../components/layout/BottomNav";
 import { useFinancialHistory } from "../../hooks/useFinancialHistory";
-import { getFinancialAnalysis, saveFinancialRecommendations, getLatestRecommendation } from "../../services/financialAiApi";
+import { useSavings } from "../../hooks/useSavings";
+import {
+  getFinancialAnalysis,
+  saveFinancialRecommendations,
+  getLatestRecommendation,
+} from "../../services/financialAiApi";
 import "./AnalisisView.css";
 
 Chart.register(...registerables);
@@ -23,13 +28,7 @@ const CATEGORY_STYLE_MAP = {
   Otros: { icon: "🔖", color: "#374151", iconBg: "#E5E7EB" },
 };
 
-const FALLBACK_COLORS = [
-  "#DB2777",
-  "#EC4899",
-  "#A78BFA",
-  "#2DD4BF",
-  "#BE185D",
-];
+const FALLBACK_COLORS = ["#DB2777", "#EC4899", "#A78BFA", "#2DD4BF", "#BE185D"];
 
 const getCategoryStyle = (nombre, index = 0) =>
   CATEGORY_STYLE_MAP[nombre] || {
@@ -50,9 +49,12 @@ const formatCOP = (value) => {
   );
 };
 
-const calcSavingsRate = (resumen) => {
-  if (!resumen?.totalIngresos || resumen.totalIngresos === 0) return "0%";
-  return Math.round((resumen.totalAhorros / resumen.totalIngresos) * 100) + "%";
+// Porcentaje de ingresos que se destinó a gastos en el período — ambos
+// valores (totalGastos, totalIngresos) vienen del mismo resumen y la misma
+// ventana de tiempo, así que el resultado es exacto, sin aproximaciones.
+const calcExpenseRatio = (resumen) => {
+  if (!resumen?.totalIngresos || resumen.totalIngresos === 0) return 0;
+  return Math.round((resumen.totalGastos / resumen.totalIngresos) * 100);
 };
 
 const calcDailyAverage = (resumen, dias = 30) => {
@@ -101,14 +103,6 @@ const buildWeeklyChartData = (movimientos = []) => {
   };
 };
 
-const calcMonthlyVariation = (historialMensual) => {
-  if (!historialMensual || historialMensual.length < 2) return null;
-  const last = historialMensual[historialMensual.length - 1];
-  const prev = historialMensual[historialMensual.length - 2];
-  if (!prev.gastos || prev.gastos === 0) return null;
-  return (((last.gastos - prev.gastos) / prev.gastos) * 100).toFixed(1);
-};
-
 // ─── Análisis anterior (simulado) ─────────────────────────────────────────────
 const ANALISIS_ANTERIOR = {
   fecha: "Mayo 2025",
@@ -132,7 +126,8 @@ const formatearAnalisisIA = (analisisData = {}, recomendacionesData = {}) => {
     partes.push(`**Resumen**\n\n${analisisData.resumenEjecutivo}`);
   }
 
-  const patrones = analisisData.hallazgos ?? analisisData.patronesDetectados ?? [];
+  const patrones =
+    analisisData.hallazgos ?? analisisData.patronesDetectados ?? [];
   if (patrones.length) {
     const items = patrones
       .map((p) => `• ${p.titulo}: ${p.descripcion ?? p.evidencia ?? ""}`)
@@ -142,7 +137,10 @@ const formatearAnalisisIA = (analisisData = {}, recomendacionesData = {}) => {
 
   if (recomendacionesData.recomendaciones?.length) {
     const items = recomendacionesData.recomendaciones
-      .map((r) => `• ${r.titulo}: ${r.quéHacer ?? r.accionSugerida ?? "Ver recomendación completa"}`)
+      .map(
+        (r) =>
+          `• ${r.titulo}: ${r.quéHacer ?? r.accionSugerida ?? "Ver recomendación completa"}`,
+      )
       .join("\n");
     partes.push(`**Consejos para ti**\n\n${items}`);
   }
@@ -175,10 +173,7 @@ const generarAnalisis = async () => {
 
     // El resultado tiene data.analisis (análisis) y data.recomendaciones (recomendaciones)
     setAnalisis(
-      formatearAnalisisIA(
-        resultado.data?.analisis || {},
-        resultado.data || {},
-      ),
+      formatearAnalisisIA(resultado.data?.analisis || {}, resultado.data || {}),
     );
     setEstado("done");
   } catch (err) {
@@ -198,27 +193,28 @@ const ModalIA = ({ modo, onClose, historial }) => {
     if (modo !== "anterior") return;
 
     setEstado("loading");
-    getLatestRecommendation()
-      .then((registro) => {
-        if (!registro) {
-          setAnalisis("Aún no tienes análisis guardados. Genera uno primero.");
-        } else {
-          const fecha = registro.creadoEn
-            ? new Date(registro.creadoEn).toLocaleDateString("es-CO", {
-                day: "numeric", month: "long", year: "numeric",
-              })
-            : "Fecha desconocida";
-          // Lee tanto el análisis anidado como las recomendaciones del data raíz
-          setAnalisis(
-            `**Análisis guardado — ${fecha}**\n\n` +
+    getLatestRecommendation().then((registro) => {
+      if (!registro) {
+        setAnalisis("Aún no tienes análisis guardados. Genera uno primero.");
+      } else {
+        const fecha = registro.creadoEn
+          ? new Date(registro.creadoEn).toLocaleDateString("es-CO", {
+              day: "numeric",
+              month: "long",
+              year: "numeric",
+            })
+          : "Fecha desconocida";
+        // Lee tanto el análisis anidado como las recomendaciones del data raíz
+        setAnalisis(
+          `**Análisis guardado — ${fecha}**\n\n` +
             formatearAnalisisIA(
-              registro.data?.analisis || {},  // análisis completo
-              registro.data || {},            // recomendaciones
-            )
-          );
-        }
-        setEstado("done");
-      })
+              registro.data?.analisis || {}, // análisis completo
+              registro.data || {}, // recomendaciones
+            ),
+        );
+      }
+      setEstado("done");
+    });
   }, [modo]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const generarAnalisis = async () => {
@@ -230,7 +226,8 @@ const ModalIA = ({ modo, onClose, historial }) => {
           movimientos: historial?.movimientos || [],
           periodo: historial?.periodo || null,
         }),
-        saveFinancialRecommendations({   // ← guarda en users/{uid}/recommendations
+        saveFinancialRecommendations({
+          // ← guarda en users/{uid}/recommendations
           movimientos: historial?.movimientos || [],
           periodo: historial?.periodo || null,
         }),
@@ -245,7 +242,8 @@ const ModalIA = ({ modo, onClose, historial }) => {
       setEstado("done");
     } catch (err) {
       setAnalisis(
-        err.message || "Ocurrió un error al generar el análisis. Intenta de nuevo.",
+        err.message ||
+          "Ocurrió un error al generar el análisis. Intenta de nuevo.",
       );
       setEstado("done");
     }
@@ -281,8 +279,19 @@ const ModalIA = ({ modo, onClose, historial }) => {
             </div>
           </div>
           <button className="modal-close" onClick={onClose} aria-label="Cerrar">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={2.5}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M6 18L18 6M6 6l12 12"
+              />
             </svg>
           </button>
         </div>
@@ -293,9 +302,13 @@ const ModalIA = ({ modo, onClose, historial }) => {
             <div className="modal-loading">
               <div className="modal-spinner" />
               <p className="modal-loading-text">
-                {esNuevo ? "Analizando tus finanzas..." : "Cargando análisis anterior..."}
+                {esNuevo
+                  ? "Analizando tus finanzas..."
+                  : "Cargando análisis anterior..."}
               </p>
-              <p className="modal-loading-sub">Esto puede tomar unos segundos</p>
+              <p className="modal-loading-sub">
+                Esto puede tomar unos segundos
+              </p>
             </div>
           )}
 
@@ -303,14 +316,28 @@ const ModalIA = ({ modo, onClose, historial }) => {
           {esNuevo && estado === "idle" && (
             <div className="modal-empty-state">
               <div className="modal-empty-icon">🤖</div>
-              <p className="modal-empty-title">Listo para analizar tus finanzas</p>
+              <p className="modal-empty-title">
+                Listo para analizar tus finanzas
+              </p>
               <p className="modal-empty-desc">
                 La IA revisará tus gastos, categorías, metas y tendencias del
-                período actual y guardará el resultado para que puedas consultarlo después.
+                período actual y guardará el resultado para que puedas
+                consultarlo después.
               </p>
               <button className="modal-generate-btn" onClick={generarAnalisis}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M13 10V3L4 14h7v7l9-11h-7z"
+                  />
                 </svg>
                 Generar ahora
               </button>
@@ -328,8 +355,19 @@ const ModalIA = ({ modo, onClose, historial }) => {
           <div className="modal-footer">
             {esNuevo && (
               <button className="modal-retry-btn" onClick={generarAnalisis}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                  />
                 </svg>
                 Regenerar análisis
               </button>
@@ -356,6 +394,35 @@ export const AnalisisView = () => {
     error,
   } = useFinancialHistory({ meses: 6 });
 
+  const { progresos: metasAhorro, loading: cargandoMetas } = useSavings();
+
+  // ── Selector de meta a mostrar — mismo patrón que DashboardView ─────────
+  const [metaSeleccionadaId, setMetaSeleccionadaId] = useState(null);
+  const [menuMetaAbierto, setMenuMetaAbierto] = useState(false);
+  const menuMetaRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickFuera = (e) => {
+      if (menuMetaRef.current && !menuMetaRef.current.contains(e.target)) {
+        setMenuMetaAbierto(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickFuera);
+    return () => document.removeEventListener("mousedown", handleClickFuera);
+  }, []);
+
+  // Campos confirmados desde savings_goal_progress_service.py (calculate_goal_progress):
+  // nombre, montoActual, montoObjetivo, porcentajeAvance (0-100, ya redondeado).
+  const metaDestacada =
+    (metasAhorro || []).find((m) => m.id === metaSeleccionadaId) ||
+    metasAhorro?.[0] ||
+    null;
+
+  const metaNombre = metaDestacada?.nombre || "Sin meta activa";
+  const metaMontoActual = metaDestacada?.montoActual ?? 0;
+  const metaMontoObjetivo = metaDestacada?.montoObjetivo ?? 0;
+  const metaPorcentaje = metaDestacada?.porcentajeAvance ?? 0;
+
   const trendRef = useRef(null);
   const donutRef = useRef(null);
   const trendChart = useRef(null);
@@ -380,16 +447,10 @@ export const AnalisisView = () => {
       : buildMonthlyChartData(historialMensual);
 
   const totalGastado = formatCOP(resumen?.totalGastos);
-  const tasaAhorro = calcSavingsRate(resumen);
+  const gastoSobreIngresosPct = calcExpenseRatio(resumen);
   const promedioDiario = promedios
     ? formatCOP(promedios.gastoPromedioMensual / 30)
     : calcDailyAverage(resumen, 30);
-
-  const variacion = calcMonthlyVariation(historialMensual);
-  const variacionLabel =
-    variacion !== null
-      ? `${Number(variacion) > 0 ? "↗" : "↘"} ${Math.abs(variacion)}% vs mes anterior`
-      : "Sin datos suficientes";
 
   const categoriasFrecuentes = (historial?.categoriasFrecuentes || []).slice(
     0,
@@ -572,7 +633,6 @@ export const AnalisisView = () => {
                     : "Tus patrones de gasto en los últimos 6 meses"}
                 </p>
               </div>
-              <span className="analisis-trend-badge">{variacionLabel}</span>
             </div>
             <div className="analisis-chart-area">
               <canvas
@@ -595,13 +655,29 @@ export const AnalisisView = () => {
                 </p>
               </div>
               <div>
-                <p className="analisis-metric-label">Tasa de Ahorro</p>
-                <p className="analisis-metric-value green">
-                  {cargando ? "—" : tasaAhorro}
+                <p className="analisis-metric-label">Gasto sobre Ingresos</p>
+                <p
+                  className="analisis-metric-value"
+                  style={{
+                    color: cargando
+                      ? undefined
+                      : gastoSobreIngresosPct > 80
+                        ? "#E53E3E"
+                        : gastoSobreIngresosPct > 60
+                          ? "#D97706"
+                          : "#1A7A4A",
+                  }}
+                >
+                  {cargando ? "—" : `${gastoSobreIngresosPct}%`}
                 </p>
               </div>
               <div>
-                <p className="analisis-metric-label">Promedio Diario</p>
+                <p
+                  className="analisis-metric-label"
+                  title="Calculado a partir de tu gasto promedio mensual de los últimos 6 meses, dividido entre 30 días. No es el total gastado dividido entre los días transcurridos."
+                >
+                  Promedio Diario de Gastos
+                </p>
                 <p className="analisis-metric-value">
                   {cargando ? "—" : promedioDiario}
                 </p>
@@ -696,15 +772,75 @@ export const AnalisisView = () => {
 
         <div className="analisis-bottom-row">
           <div className="analisis-card">
-            <p className="analisis-card-eyebrow">Meta de Ahorro</p>
-            <p className="analisis-card-name">Nuevo MacBook</p>
-            <p className="analisis-goal-amounts">$1.800.000 / $2.500.000</p>
-            <div className="analisis-goal-bar">
-              <div className="analisis-goal-fill" style={{ width: "72%" }} />
+            <div className="analisis-goal-header">
+              <p className="analisis-card-eyebrow">Meta de Ahorro</p>
+
+              {!cargandoMetas && metasAhorro && metasAhorro.length > 1 && (
+                <div className="meta-selector" ref={menuMetaRef}>
+                  <button
+                    type="button"
+                    className="meta-selector-btn"
+                    aria-label="Elegir meta a mostrar"
+                    onClick={() => setMenuMetaAbierto((open) => !open)}
+                  >
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                      <circle cx="12" cy="5" r="1.75" />
+                      <circle cx="12" cy="12" r="1.75" />
+                      <circle cx="12" cy="19" r="1.75" />
+                    </svg>
+                  </button>
+
+                  {menuMetaAbierto && (
+                    <div className="meta-dropdown-menu">
+                      {metasAhorro.map((meta) => (
+                        <button
+                          key={meta.id}
+                          type="button"
+                          className={`meta-dropdown-item${
+                            meta.id === metaDestacada?.id ? " active" : ""
+                          }`}
+                          onClick={() => {
+                            setMetaSeleccionadaId(meta.id);
+                            setMenuMetaAbierto(false);
+                          }}
+                        >
+                          <span className="meta-dropdown-item-name">
+                            {meta.nombre}
+                          </span>
+                          <span className="meta-dropdown-item-pct">
+                            {meta.porcentajeAvance ?? 0}%
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
+
+            {cargandoMetas ? (
+              <p className="analisis-loading-text">Cargando meta...</p>
+            ) : !metaDestacada ? (
+              <p className="analisis-empty-text">
+                Aún no tienes metas de ahorro activas.
+              </p>
+            ) : (
+              <>
+                <p className="analisis-card-name">{metaNombre}</p>
+                <p className="analisis-goal-amounts">
+                  {formatCOP(metaMontoActual)} / {formatCOP(metaMontoObjetivo)}
+                </p>
+                <div className="analisis-goal-bar">
+                  <div
+                    className="analisis-goal-fill"
+                    style={{ width: `${metaPorcentaje}%` }}
+                  />
+                </div>
+              </>
+            )}
           </div>
 
-          <div className="analisis-card">
+          <div className="analisis-card analisis-card--roomy">
             <p className="analisis-card-eyebrow">Flujo Neto del Período</p>
             <div className="analisis-subs-row">
               <div className="analisis-subs-icon">💸</div>
@@ -724,7 +860,7 @@ export const AnalisisView = () => {
             </p>
           </div>
 
-          <div className="analisis-card">
+          <div className="analisis-card analisis-card--roomy">
             <p className="analisis-card-eyebrow">Tendencia de Gastos</p>
             <div className="analisis-score-row">
               <p className="analisis-score-num">
