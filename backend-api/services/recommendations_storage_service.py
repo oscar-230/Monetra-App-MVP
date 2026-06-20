@@ -44,8 +44,15 @@ def save_recommendation(
     recommendation_response: Dict[str, Any],
     periodo: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
-   
+
     collection_ref = get_recommendations_collection(uid)
+
+    # Elimina cualquier documento previo que no sea "latest"
+    # (limpia restos de guardados antiguos con IDs aleatorios)
+    existing_docs = collection_ref.stream()
+    for doc in existing_docs:
+        if doc.id != "latest":
+            doc.reference.delete()
 
     document_data = {
         "uid": uid,
@@ -58,7 +65,8 @@ def save_recommendation(
         "creadoEn": firestore.SERVER_TIMESTAMP,
     }
 
-    document_ref = collection_ref.document()
+    # Documento con ID fijo "latest" — set() sobreescribe completo
+    document_ref = collection_ref.document("latest")
     document_ref.set(document_data)
 
     saved = document_ref.get()
