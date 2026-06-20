@@ -104,5 +104,85 @@ export const savingsApi = {
       exito: true,
       abono: result
     };
+  },
+
+  // 4. CONECTA CON: POST /api/savings-goals/{goal_id}/retiros
+  async registerRetiro(goalId, monto) {
+    console.log(`Enviando retiro de $${monto} para la meta ${goalId} a FastAPI (Fetch)...`);
+    const headers = await getAuthHeaders();
+
+    const payload = {
+      monto: parseFloat(monto) // Se mapea con RetiroCreate en Python
+    };
+
+    const response = await fetch(`${API_URL}/${goalId}/retiros`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(payload),
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(result.detail || 'No fue posible registrar el retiro');
+    }
+
+    return {
+      exito: true,
+      retiro: result
+    };
+  },
+
+  // 5. CONECTA CON: DELETE /api/savings-goals/{goal_id}
+  async deleteGoal(goalId) {
+    console.log(`Eliminando meta ${goalId} en FastAPI (Fetch)...`);
+    const headers = await getAuthHeaders();
+
+    const response = await fetch(`${API_URL}/${goalId}?confirmar=true`, {
+      method: 'DELETE',
+      headers,
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(result.detail || 'No fue posible eliminar la meta');
+    }
+
+    return {
+      exito: true,
+      eliminado: result
+    };
+  },
+
+  // 6. CONECTA CON: PUT /api/savings-goals/{goal_id}
+  async updateGoal(goalId, goalData) {
+    console.log(`Actualizando meta ${goalId} en FastAPI (Fetch)...`);
+    const headers = await getAuthHeaders();
+
+    const payload = {};
+    if (goalData.nombre !== undefined) payload.nombre = goalData.nombre;
+    if (goalData.montoObjetivo !== undefined) payload.montoObjetivo = parseFloat(goalData.montoObjetivo);
+    if (goalData.fechaEstimada !== undefined) payload.fechaEstimada = goalData.fechaEstimada;
+    if (goalData.descripcion !== undefined) payload.descripcion = goalData.descripcion;
+    if (goalData.moneda !== undefined) payload.moneda = goalData.moneda;
+    if (goalData.estado !== undefined) payload.estado = goalData.estado;
+
+    const response = await fetch(`${API_URL}/${goalId}`, {
+      method: 'PUT',
+      headers,
+      body: JSON.stringify(payload),
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(result.detail || 'No fue posible actualizar la meta');
+    }
+
+    return {
+      exito: true,
+      meta: result
+    };
   }
 };

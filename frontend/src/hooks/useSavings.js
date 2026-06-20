@@ -57,6 +57,42 @@ export const useSavings = () => {
     }
   };
 
+  const saveRetiro = async (goalId, monto) => {
+    try {
+      const result = await savingsApi.registerRetiro(goalId, monto);
+      if (result.exito) {
+        await loadSavingsData();
+        return { exito: true };
+      }
+    } catch (err) {
+      return { exito: false, error: err.message };
+    }
+  };
+
+  const deleteGoal = async (goalId) => {
+    try {
+      const result = await savingsApi.deleteGoal(goalId);
+      if (result.exito) {
+        await loadSavingsData();
+        return { exito: true };
+      }
+    } catch (err) {
+      return { exito: false, error: err.message };
+    }
+  };
+
+  const updateGoal = async (goalId, goalData) => {
+    try {
+      const result = await savingsApi.updateGoal(goalId, goalData);
+      if (result.exito) {
+        await loadSavingsData();
+        return { exito: true };
+      }
+    } catch (err) {
+      return { exito: false, error: err.message };
+    }
+  };
+
   return {
     progresos,
     resumen,
@@ -64,6 +100,9 @@ export const useSavings = () => {
     error,
     addGoal,
     saveAbono,
+    saveRetiro,
+    deleteGoal,
+    updateGoal,
     refresh: loadSavingsData
   };
 };

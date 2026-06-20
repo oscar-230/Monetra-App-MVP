@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Query, Request
 
-from schemas.savings_goal_schemas import SavingsGoalCreate, SavingsGoalUpdate, AbonoCreate
+from schemas.savings_goal_schemas import SavingsGoalCreate, SavingsGoalUpdate, AbonoCreate, RetiroCreate
 from services.firebase_service import get_authenticated_uid
 from services.savings_goal_progress_service import (
     get_all_goals_progress,
@@ -23,6 +23,11 @@ from services.savings_goals_service import (
 from services.savings_goal_abono_service import (
      AbonoValidationError,
      register_abono,
+)
+
+from services.savings_goal_retiro_service import (
+     RetiroValidationError,
+     register_retiro,
 )
 
 router = APIRouter()
@@ -87,6 +92,18 @@ def add_abono(goal_id: str, payload: AbonoCreate, request: Request):
     try:
         return register_abono(uid, goal_id, payload.monto)
     except AbonoValidationError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+    except SavingsGoalServiceError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+
+@router.post("/{goal_id}/retiros")
+def add_retiro(goal_id: str, payload: RetiroCreate, request: Request):
+    
+    uid = get_authenticated_uid(request)
+ 
+    try:
+        return register_retiro(uid, goal_id, payload.monto)
+    except RetiroValidationError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
     except SavingsGoalServiceError as error:
         raise HTTPException(status_code=404, detail=str(error)) from error
