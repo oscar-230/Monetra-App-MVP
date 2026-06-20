@@ -3,6 +3,7 @@ import { screen, fireEvent, waitFor, within } from "@testing-library/react";
 import { renderWithProviders } from "./helpers";
 import { AnalisisView } from "../views/analisis/AnalisisView";
 import { useFinancialHistory } from "../hooks/useFinancialHistory";
+import { useSavings } from "../hooks/useSavings";
 import {
   getFinancialAnalysis,
   saveFinancialRecommendations,
@@ -38,6 +39,11 @@ vi.mock("../hooks/useFinancialHistory", () => ({
   useFinancialHistory: vi.fn(),
 }));
 
+// ─── Mock del hook de metas de ahorro ──────────────────────────────────────
+vi.mock("../hooks/useSavings", () => ({
+  useSavings: vi.fn(),
+}));
+
 // ─── Mock de los servicios de IA ───────────────────────────────────────────
 vi.mock("../services/financialAiApi", () => ({
   getFinancialAnalysis: vi.fn(),
@@ -48,8 +54,18 @@ vi.mock("../services/financialAiApi", () => ({
 // ─── Fixtures ───────────────────────────────────────────────────────────────
 const HISTORIAL_MOCK = {
   movimientos: [
-    { tipo: "gasto", monto: 50000, fecha: "2025-06-03", categoria: "Alimentación" },
-    { tipo: "gasto", monto: 30000, fecha: "2025-06-12", categoria: "Transporte" },
+    {
+      tipo: "gasto",
+      monto: 50000,
+      fecha: "2025-06-03",
+      categoria: "Alimentación",
+    },
+    {
+      tipo: "gasto",
+      monto: 30000,
+      fecha: "2025-06-12",
+      categoria: "Transporte",
+    },
   ],
   periodo: "2025-06",
   historialMensual: [
@@ -83,9 +99,33 @@ const buildHookReturn = (overrides = {}) => ({
   ...overrides,
 });
 
+// Fixture de useSavings — una meta activa de ejemplo
+const METAS_AHORRO_MOCK = [
+  {
+    id: "meta-1",
+    nombre: "Nuevo MacBook",
+    estado: "activa",
+    montoObjetivo: 2500000,
+    montoActual: 1800000,
+    porcentajeAvance: 72,
+  },
+];
+
+const buildSavingsHookReturn = (overrides = {}) => ({
+  progresos: METAS_AHORRO_MOCK,
+  resumen: { promedioAvanceGeneral: 72 },
+  loading: false,
+  error: null,
+  addGoal: vi.fn(),
+  saveAbono: vi.fn(),
+  refresh: vi.fn(),
+  ...overrides,
+});
+
 beforeEach(() => {
   vi.clearAllMocks();
   useFinancialHistory.mockReturnValue(buildHookReturn());
+  useSavings.mockReturnValue(buildSavingsHookReturn());
 });
 
 describe("Pruebas en <AnalisisView />", () => {
@@ -181,7 +221,7 @@ describe("Pruebas en <AnalisisView />", () => {
 
       expect(screen.getByText("$4.100.000")).toBeInTheDocument(); // Total Gastado
       expect(screen.getByText("$5.000.000")).toBeInTheDocument(); // Total Ingresos
-      expect(screen.getByText("18%")).toBeInTheDocument(); // Tasa de ahorro (900000/5000000)
+      expect(screen.getByText("82%")).toBeInTheDocument(); // Gasto sobre Ingresos (4100000/5000000)
     });
 
     test("debe renderizar las categorías principales con su monto", () => {
@@ -265,7 +305,11 @@ describe("Pruebas en <AnalisisView />", () => {
         data: { resumenEjecutivo: "Resumen de prueba" },
       });
       saveFinancialRecommendations.mockResolvedValue({
-        data: { recomendaciones: [{ titulo: "Ahorra más", accionSugerida: "Reduce gastos" }] },
+        data: {
+          recomendaciones: [
+            { titulo: "Ahorra más", accionSugerida: "Reduce gastos" },
+          ],
+        },
       });
 
       renderWithProviders(<AnalisisView />);
@@ -287,7 +331,9 @@ describe("Pruebas en <AnalisisView />", () => {
         movimientos: HISTORIAL_MOCK.movimientos,
         periodo: HISTORIAL_MOCK.periodo,
       });
-      expect(screen.getByText("Ahorra más: Reduce gastos", { exact: false })).toBeInTheDocument();
+      expect(
+        screen.getByText("Ahorra más: Reduce gastos", { exact: false }),
+      ).toBeInTheDocument();
     });
 
     test("debe mostrar un mensaje de error si la generación del análisis falla", async () => {
@@ -385,7 +431,9 @@ describe("Pruebas en <AnalisisView />", () => {
 
       await waitFor(() => {
         expect(
-          screen.getByText("Aún no tienes análisis guardados. Genera uno primero."),
+          screen.getByText(
+            "Aún no tienes análisis guardados. Genera uno primero.",
+          ),
         ).toBeInTheDocument();
       });
     });
