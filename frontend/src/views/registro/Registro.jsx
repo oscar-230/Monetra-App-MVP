@@ -1,5 +1,5 @@
 // frontend/src/views/registro/Registro.jsx
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import "./Registro.css";
 import { BottomNav } from "../../components/layout/BottomNav";
@@ -101,6 +101,8 @@ export const Registro = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const fileInputRef = useRef(null);
+  const amountInputRef = useRef(null);
+  const amountSizerRef = useRef(null);
 
   // Si llegamos desde el Dashboard con un tipo preseleccionado
   // (location.state.tipo === 'ingreso' | 'gasto'), lo usamos como inicial.
@@ -125,12 +127,25 @@ export const Registro = () => {
     tipoMovimiento === "ingreso" ? CATEGORIAS_INGRESO : CATEGORIAS_GASTO;
 
   // ── Handlers de monto ──────────────────────────────────────────────
+  // `monto` almacena solo dígitos (sin puntos). El input muestra el valor
+  // formateado con puntos de miles al estilo COP (ej: 1.250.000).
   const handleMonto = (e) => {
-    const val = e.target.value.replace(/[^0-9.]/g, "");
-    if (val.split(".").length > 2) return;
-    setMonto(val);
+    // Quitar todo lo que no sea dígito (el usuario puede pegar texto con puntos)
+    const soloDigitos = e.target.value.replace(/\D/g, "");
+    setMonto(soloDigitos);
     if (error) setError("");
   };
+
+  // Formatea los dígitos almacenados con puntos de miles para mostrarlo
+  const montoFormateado = monto ? Number(monto).toLocaleString("es-CO") : "";
+
+  // Ajusta el ancho del input al texto para que $ + número quede centrado
+  useEffect(() => {
+    if (amountSizerRef.current && amountInputRef.current) {
+      const w = amountSizerRef.current.offsetWidth;
+      amountInputRef.current.style.width = (w || 10) + "px";
+    }
+  }, [montoFormateado]);
 
   // ── Escanear factura con OCR ───────────────────────────────────────
   const handleFileSelect = async (e) => {
@@ -172,7 +187,8 @@ export const Registro = () => {
 
     // Monto
     if (ocrData.monto_total && ocrData.monto_total > 0) {
-      setMonto(String(ocrData.monto_total));
+      // Guardamos solo dígitos para ser consistentes con handleMonto
+      setMonto(String(Math.round(ocrData.monto_total)));
     }
 
     // Categoría — usar el campo categoria que devuelve el backend directamente
@@ -200,7 +216,7 @@ export const Registro = () => {
 
   // ── Guardar movimiento en backend → Firestore ───────────────────────
   const handleGuardar = async () => {
-    const num = parseFloat(monto);
+    const num = parseFloat(monto.replace(/\./g, ""));
     if (!monto || isNaN(num) || num <= 0) {
       setError("Ingresa un monto válido para continuar.");
       return;
@@ -287,12 +303,21 @@ export const Registro = () => {
           <p className="rg-amount-label">Monto del {tipoMovimiento}</p>
           <div className="rg-amount-row">
             <span className="rg-dollar">$</span>
+            {/* Span invisible que mide el ancho real del texto formateado */}
+            <span
+              ref={amountSizerRef}
+              className="rg-amount-sizer"
+              aria-hidden="true"
+            >
+              {montoFormateado || "0"}
+            </span>
             <input
+              ref={amountInputRef}
               className="rg-amount-input"
               type="text"
-              inputMode="decimal"
-              placeholder="0.00"
-              value={monto}
+              inputMode="numeric"
+              placeholder="0"
+              value={montoFormateado}
               onChange={handleMonto}
               aria-label={`Monto del ${tipoMovimiento}`}
             />
