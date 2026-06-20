@@ -80,7 +80,7 @@ def get_authenticated_uid(request: Request) -> str:
     try:
         initialize_firebase_app()
         print(f"TOKEN RECIBIDO: {token[:30]}...")  # ← agrega esto
-        decoded_token = auth.verify_id_token(token)
+        decoded_token = auth.verify_id_token(token, clock_skew_seconds=10)
         print(f"UID DECODIFICADO: {decoded_token.get('uid')}")  # ← y esto
         uid = decoded_token.get("uid")
 

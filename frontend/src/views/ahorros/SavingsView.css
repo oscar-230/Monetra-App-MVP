@@ -212,6 +212,50 @@
   color: #067A3B;
 }
 
+.featured-goal-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.goal-action-btn {
+  flex: 1;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s;
+}
+
+.goal-action-btn-deposit {
+  background: #067A3B;
+  color: white;
+}
+
+.goal-action-btn-deposit:hover {
+  background: #05632f;
+}
+
+.goal-action-btn-withdraw {
+  background: #f59e0b;
+  color: white;
+}
+
+.goal-action-btn-withdraw:hover {
+  background: #d97706;
+}
+
+.goal-action-btn-edit {
+  background: #64748b;
+  color: white;
+}
+
+.goal-action-btn-edit:hover {
+  background: #475569;
+}
+
 /* --- HISTORIAL DE AHORROS --- */
 .savings-history-list {
   display: flex;
@@ -408,6 +452,11 @@
   border: none;
 }
 
+.goal-modal-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .goal-modal-btn-cancel {
   background: #f1f5f9;
   color: #475569;
@@ -416,6 +465,15 @@
 .goal-modal-btn-submit {
   background: #067A3B;
   color: white;
+}
+
+.goal-modal-btn-delete {
+  background: #dc2626;
+  color: white;
+}
+
+.goal-modal-btn-delete:hover {
+  background: #b91c1c;
 }
 
 @media (max-width: 640px) {

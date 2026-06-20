@@ -28,3 +28,7 @@ class SavingsGoalUpdate(BaseModel):
 class AbonoCreate(BaseModel):
     """Datos requeridos para registrar un abono a una meta de ahorro."""
     monto: float = Field(gt=0)
+
+class RetiroCreate(BaseModel):
+    """Datos requeridos para registrar un retiro de una meta de ahorro."""
+    monto: float = Field(gt=0)
