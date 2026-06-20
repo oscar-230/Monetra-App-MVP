@@ -452,6 +452,11 @@
   border: none;
 }
 
+.goal-modal-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .goal-modal-btn-cancel {
   background: #f1f5f9;
   color: #475569;

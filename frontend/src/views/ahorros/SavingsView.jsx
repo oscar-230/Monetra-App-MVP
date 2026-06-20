@@ -9,6 +9,7 @@ export const SavingsView = () => {
   const [seccionActiva, setSeccionActiva] = useState('ahorros');
   const [showGoalModal, setShowGoalModal] = useState(false);
   const [goalForm, setGoalForm] = useState({ nombre: '', monto: '', fechaEstimada: '' });
+  const [isCreatingGoal, setIsCreatingGoal] = useState(false);
   
   const [showTransactionModal, setShowTransactionModal] = useState(false);
   const [selectedGoalId, setSelectedGoalId] = useState(null);
@@ -43,7 +44,9 @@ export const SavingsView = () => {
 
   const handleGoalSubmit = async (e) => {
     e.preventDefault();
+    setIsCreatingGoal(true);
     const res = await addGoal(goalForm);
+    setIsCreatingGoal(false);
     if (res?.exito) {
       setShowGoalModal(false);
       setGoalForm({ nombre: '', monto: '', fechaEstimada: '' });
@@ -65,6 +68,16 @@ export const SavingsView = () => {
     if (isNaN(montoNumerico) || montoNumerico <= 0) {
       alert("Por favor, ingresa un monto válido.");
       return;
+    }
+
+    // Validación para retiros: no permitir retirar más de lo ahorrado
+    if (transactionType === 'retiro') {
+      const goal = progresos.find(g => g.id === selectedGoalId);
+      const montoActual = goal?.montoActual || 0;
+      if (montoNumerico > montoActual) {
+        alert(`No puedes retirar más de lo que tienes ahorrado. Tu ahorro actual es ${formatCurrency(montoActual)}.`);
+        return;
+      }
     }
 
     let res;
@@ -273,8 +286,10 @@ export const SavingsView = () => {
                 />
               </div>
               <div className="goal-modal-actions">
-                <button type="button" className="goal-modal-btn goal-modal-btn-cancel" onClick={() => setShowGoalModal(false)}>Cancelar</button>
-                <button type="submit" className="goal-modal-btn goal-modal-btn-submit">Crear Meta</button>
+                <button type="button" className="goal-modal-btn goal-modal-btn-cancel" onClick={() => setShowGoalModal(false)} disabled={isCreatingGoal}>Cancelar</button>
+                <button type="submit" className="goal-modal-btn goal-modal-btn-submit" disabled={isCreatingGoal}>
+                  {isCreatingGoal ? 'Creando...' : 'Crear Meta'}
+                </button>
               </div>
             </form>
           </div>
