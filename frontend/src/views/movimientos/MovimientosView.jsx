@@ -116,14 +116,25 @@ export const MovimientosView = () => {
     } else if (filterType === "categoria" && selectedCategory) {
       filtered = filtered.filter((m) => m.categoria === selectedCategory);
     }
-
     // Agrupar por fecha (YYYY-MM-DD)
     const groups = {};
     filtered.forEach((m) => {
       const key = m.fecha || "sin-fecha";
-      if (!groups[key]) groups[key] = [];
+
+      if (!groups[key]) {
+        groups[key] = [];
+      }
+
       groups[key].push(m);
     });
+
+    // Ordenar cada grupo por fecha de creación (más reciente primero)
+    Object.keys(groups).forEach((key) => {
+      groups[key].sort(
+        (a, b) => new Date(b.creadoEn) - new Date(a.creadoEn)
+      );
+    });
+
     return groups;
   }, [
     enrichedMovimientos,
@@ -159,7 +170,7 @@ export const MovimientosView = () => {
 
     if (date.toDateString() === today.toDateString()) return "Hoy";
     if (date.toDateString() === yesterday.toDateString()) return "Ayer";
-    return date.toLocaleDateString("es-ES", { day: "numeric", month: "long" });
+    return date.toLocaleDateString("es-ES", { day: "numeric", month: "long",   year: "numeric",});
   };
 
   // ── Render ─────────────────────────────────────────────────────────────
